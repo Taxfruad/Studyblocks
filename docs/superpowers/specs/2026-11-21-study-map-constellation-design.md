@@ -1,7 +1,7 @@
 # Study Map Restyle — "Constellation": Design (short)
 
 Date: 2026-11-21
-Status: approved 2026-11-21
+Status: superseded by 2026-11-21-study-map-clean-diagram-design.md
 Changes: milestone 4 study map (`2026-11-21-milestone-4-study-map-design.md`)
 
 ## Intent

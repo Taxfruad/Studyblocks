@@ -58,11 +58,12 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
   Re-planning only replaces the planner's own future blocks. Dragged blocks are pinned,
   past blocks count as studied, and blocks of finished assignments stay, crossed out.
   It never re-plans on its own. Settings live on the Schedule page.
-- **Study map** (milestone 4, restyled "Constellation") is a springy graph (d3-force,
-  drawn as SVG) with tiny glowing dots, hairline links and a dot-grid canvas. It shows courses,
+- **Study map** (milestone 4, restyled as a "clean diagram") is a springy graph (d3-force,
+  drawn as SVG) with muted dots, thin gray links, and names beside the dots (course names
+  above). Status shows as small "Overdue" / "Needs 2 h" tags. It shows courses,
   upcoming assignments (due today through 8 weeks, plus unfinished overdue work from
   the last 2 weeks), their study blocks, and optionally class commitments (squares).
-  Dot size follows the time estimate. Red ring = overdue, amber = needs study time.
+  Dot size follows the time estimate.
   Filters (course chips, hide finished, show classes) are remembered in the browser.
 - **Deadlines vs. time blocks.** Canvas assignments are deadlines, so they sit in the
   "Due" row of the day they're due (in your time zone). Events with real times are blocks

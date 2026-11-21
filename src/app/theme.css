@@ -1366,25 +1366,19 @@ a {
   }
 }
 
-/* ---------- study map ("constellation") ---------- */
+/* ---------- study map ("clean diagram") ---------- */
 
 :root,
 :root[data-theme='dark'] {
-  --map-bg: #17181b;
-  --map-grid: #2c2e33;
-  --map-link: #3b3e45;
-  --map-link-hot: #7d828c;
-  --map-label: #8f939b;
-  --map-label-strong: #d7d9de;
+  --map-link: #3d3d3d;
+  --map-label: #9b9b9b;
+  --map-label-strong: #e4e4e4;
 }
 
 :root[data-theme='light'] {
-  --map-bg: #fafafb;
-  --map-grid: #dcdde2;
-  --map-link: #cfd1d7;
-  --map-link-hot: #7d828c;
-  --map-label: #7a7d85;
-  --map-label-strong: #2a2c31;
+  --map-link: #d6d6da;
+  --map-label: #6b6d73;
+  --map-label-strong: #1f2024;
 }
 
 .map-page {
@@ -1468,7 +1462,7 @@ a {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: var(--map-bg);
+  background: var(--bg);
 }
 
 .map-canvas svg {
@@ -1481,22 +1475,18 @@ a {
   cursor: grabbing;
 }
 
-.map-grid-dot {
-  fill: var(--map-grid);
-}
-
 .map-links line {
   stroke: var(--map-link);
-  stroke-width: 0.8;
-  transition: stroke 0.2s, stroke-opacity 0.2s;
+  stroke-width: 1;
+  transition: stroke-opacity 0.2s;
 }
 
 .map-links line.hot {
-  stroke: var(--map-link-hot);
+  stroke: var(--map-label);
 }
 
 .map-links line.dim {
-  stroke-opacity: 0.15;
+  stroke-opacity: 0.25;
 }
 
 .map-node {
@@ -1508,45 +1498,39 @@ a {
   fill: transparent;
 }
 
+/* A ring in the background color keeps dots crisp where lines meet them. */
 .map-node .shape {
-  transition: r 0.15s;
+  stroke: var(--bg);
+  stroke-width: 2.5;
+}
+
+/* Study blocks are too small for a ring. */
+.map-node.kind-block .shape {
+  stroke: none;
+}
+
+.map-node:hover .shape,
+.map-node:focus-visible .shape {
+  stroke: var(--map-label-strong);
+  stroke-width: 1.5;
 }
 
 .map-node:focus {
   outline: none;
 }
 
-.map-node:focus-visible .shape {
-  stroke: var(--accent);
-  stroke-width: 2;
-}
-
 .map-node.dim {
-  opacity: 0.12;
-}
-
-.map-node.kind-block .shape {
-  opacity: 0.8;
+  opacity: 0.25;
 }
 
 .map-node.status-done,
 .map-node.status-past {
-  opacity: 0.3;
+  opacity: 0.4;
 }
 
 .map-node.status-done.dim,
 .map-node.status-past.dim {
-  opacity: 0.08;
-}
-
-.map-node.status-overdue .shape {
-  stroke: var(--danger);
-  stroke-width: 1.8;
-}
-
-.map-node.status-short .shape {
-  stroke: var(--warn);
-  stroke-width: 1.8;
+  opacity: 0.12;
 }
 
 .map-node.focused .shape {
@@ -1556,11 +1540,10 @@ a {
 
 .map-labels .label {
   fill: var(--map-label);
-  font-size: 7.5px;
-  font-weight: 500;
+  font-size: 9.5px;
   pointer-events: none;
   paint-order: stroke;
-  stroke: var(--map-bg);
+  stroke: var(--bg);
   stroke-width: 3px;
   stroke-linejoin: round;
   transition: opacity 0.2s;
@@ -1568,17 +1551,25 @@ a {
 
 .map-labels .label-course {
   fill: var(--map-label-strong);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
-.map-labels .label-overdue {
+.map-labels .tag {
+  font-size: 8.5px;
+  font-weight: 600;
+}
+
+.map-labels .tag-red {
   fill: var(--danger);
 }
 
+.map-labels .tag-amber {
+  fill: var(--warn);
+}
+
 .map-labels .label.dim {
-  opacity: 0.12;
+  opacity: 0.25;
 }
 
 .map-empty {
@@ -1651,8 +1642,7 @@ a {
 }
 
 .lg-dot,
-.lg-sq,
-.lg-ring {
+.lg-sq {
   display: inline-block;
   width: 7px;
   height: 7px;
@@ -1669,13 +1659,16 @@ a {
   border-radius: 1.5px;
 }
 
-.lg-ring {
-  background: none;
-  border: 1.5px solid var(--danger);
+.lg-tag {
+  font-weight: 600;
 }
 
-.lg-ring.amber {
-  border-color: var(--warn);
+.lg-tag.red {
+  color: var(--danger);
+}
+
+.lg-tag.amber {
+  color: var(--warn);
 }
 
 .lg-hint {

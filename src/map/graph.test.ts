@@ -68,10 +68,13 @@ describe('buildGraph', () => {
     expect(node(g, 'item:lab').status).toBeUndefined() // 2 h estimate, 2 h of blocks
     expect(node(g, 'block:b1').status).toBe('past')
     expect(node(g, 'item:proj').radius).toBeGreaterThan(node(g, 'item:quiz').radius)
-    expect(node(g, 'course:cs')).toMatchObject({ radius: 7, color: '#8b7cf6', label: 'CS 210' })
-    expect(node(g, 'block:b2').radius).toBe(2)
-    expect(node(g, 'item:quiz').radius).toBeCloseTo(4.7, 1) // 1 h
+    expect(node(g, 'course:cs')).toMatchObject({ radius: 8, color: '#8b7cf6', label: 'CS 210' })
+    expect(node(g, 'block:b2').radius).toBe(2.5)
+    expect(node(g, 'item:quiz').radius).toBeCloseTo(4.9, 1) // 1 h
     expect(node(g, 'item:proj').radius).toBe(6) // 6 h, capped
+    // Short assignments say how much time is still missing (for the "Needs …" tag).
+    expect(node(g, 'item:proj').needMinutes).toBe(360)
+    expect(node(g, 'item:lab').needMinutes).toBeUndefined()
     expect(node(g, 'item:loose').color).toBe(DEFAULT_EVENT_COLOR)
   })
 
