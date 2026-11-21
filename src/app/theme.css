@@ -766,11 +766,11 @@ a {
     z-index: 20;
     transform: translateX(-100%);
     transition: transform 0.2s ease;
-    box-shadow: var(--shadow);
   }
 
   .sidebar.is-open {
     transform: none;
+    box-shadow: var(--shadow);
   }
 
   .scrim {
@@ -1363,5 +1363,267 @@ a {
   .settings-grid > span:nth-child(odd) {
     margin-top: 8px;
     color: var(--text-muted);
+  }
+}
+
+/* ---------- milestone 4: study map ---------- */
+
+.map-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip,
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip.off {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.chip.off .dot {
+  opacity: 0.3;
+}
+
+.chip-check input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.map-filter-sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+
+.map-fit {
+  flex: none;
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.map-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.map-canvas svg {
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-canvas svg:active {
+  cursor: grabbing;
+}
+
+.map-links line {
+  stroke: var(--text-faint);
+  stroke-opacity: 0.45;
+  stroke-width: 1;
+  transition: stroke-opacity 0.15s;
+}
+
+.map-links line.dim {
+  stroke-opacity: 0.08;
+}
+
+.map-node {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.map-node:focus {
+  outline: none;
+}
+
+.map-node:focus-visible circle,
+.map-node:focus-visible rect {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.map-node.dim {
+  opacity: 0.15;
+}
+
+.map-node.kind-course circle {
+  stroke: var(--bg);
+  stroke-width: 3;
+}
+
+.map-node.kind-course.focused circle {
+  stroke: var(--text);
+}
+
+.map-node.status-done,
+.map-node.status-past {
+  opacity: 0.35;
+}
+
+.map-node.status-done.dim,
+.map-node.status-past.dim {
+  opacity: 0.1;
+}
+
+.map-node.status-overdue circle {
+  stroke: var(--danger);
+  stroke-width: 3;
+}
+
+.map-node.status-short circle {
+  stroke: var(--warn);
+  stroke-width: 3;
+}
+
+.map-labels .label {
+  fill: var(--text-muted);
+  font-size: 10px;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.map-labels .label-course {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.map-labels .label.dim {
+  opacity: 0.15;
+}
+
+.map-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.map-card {
+  position: absolute;
+  top: 12px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(320px, calc(100% - 36px));
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.map-card strong {
+  font-size: 13px;
+}
+
+.map-card span {
+  color: var(--text-muted);
+}
+
+.map-card .tag {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.map-card .tag.red {
+  color: var(--danger);
+}
+
+.map-card .tag.amber {
+  color: var(--warn);
+}
+
+.map-legend {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  pointer-events: none;
+}
+
+.map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lg-dot,
+.lg-sq,
+.lg-ring {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.lg-dot.sm {
+  width: 6px;
+  height: 6px;
+}
+
+.lg-sq {
+  border-radius: 2px;
+}
+
+.lg-ring {
+  background: none;
+  border: 2px solid var(--danger);
+}
+
+.lg-ring.amber {
+  border-color: var(--warn);
+}
+
+@media (max-width: 760px) {
+  .map-filters {
+    padding: 10px 16px;
+  }
+
+  .map-legend {
+    display: none;
   }
 }

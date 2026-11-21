@@ -15,6 +15,9 @@ import { db } from '../db/db'
 import { getMinGap, getStudySettings } from '../db/settings'
 import { planMyStudyTime, summarize } from '../study/applyPlan'
 import { coverage } from '../study/coverage'
+import { buildGraph, type MapNode } from '../map/graph'
+import { StudyMap } from '../map/StudyMap'
+import { useMapFilters } from '../map/useMapFilters'
 import { StudyBlockDialog } from '../study/StudyBlockDialog'
 import { ImportDialog } from '../import/ImportDialog'
 import { loadSample } from '../import/syncFeed'
@@ -49,6 +52,7 @@ export default function App() {
   const [focus, setFocus] = useState<{ date: string; nonce: number }>()
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null)
   const [planning, setPlanning] = useState(false)
+  const [mapFilters, setMapFilters] = useMapFilters()
 
   const feeds = useLiveQuery(() => db.feeds.toArray(), [])
   const courses = useLiveQuery(() => db.courses.orderBy('name').toArray(), [])
@@ -76,7 +80,15 @@ export default function App() {
     [items, studyBlocks, now],
   )
 
-  if (!feeds || !courses || !items || !commitments || minGap === undefined || !studyBlocks || !studySettings) {
+  const graph = useMemo(
+    () =>
+      items && courses && studyBlocks && commitments
+        ? buildGraph({ items, courses, blocks: studyBlocks, commitments, now, filters: mapFilters })
+        : null,
+    [items, courses, studyBlocks, commitments, now, mapFilters],
+  )
+
+  if (!feeds || !courses || !items || !commitments || minGap === undefined || !studyBlocks || !studySettings || !graph) {
     return <div className="loading" />
   }
   const block = selectedBlock ? studyBlocks.find((b) => b.id === selectedBlock) : undefined
@@ -145,6 +157,17 @@ export default function App() {
     })
   }
 
+  function openFromMap(node: MapNode) {
+    if (node.kind === 'assignment') setSelected(node.refId)
+    else if (node.kind === 'class') setForm({ commitmentId: node.refId })
+    else if (node.kind === 'block') {
+      const b = studyBlocks!.find((x) => x.id === node.refId)
+      if (!b) return
+      setFocus({ date: b.start, nonce: Date.now() })
+      go('calendar')
+    }
+  }
+
   async function loadTestShift() {
     await db.commitments.bulkAdd(buildTestShift(new Date()))
     setNotice('Added a test work shift: Tue/Thu 4–9 pm and Sat 10 am–4 pm.')
@@ -181,7 +204,7 @@ export default function App() {
           {redCount > 0 && <button className="badge red" onClick={() => go('conflicts')}>{redCount}</button>}
         </div>
 
-        {isEmpty && view !== 'conflicts' ? (
+        {isEmpty && view !== 'conflicts' && view !== 'map' ? (
           <div className="empty">
             <h1>Your semester, in one quiet place.</h1>
             <p className="muted">
@@ -213,6 +236,15 @@ export default function App() {
           />
         ) : view === 'assignments' ? (
           <AssignmentList items={items} courses={courses} onSelect={setSelected} />
+        ) : view === 'map' ? (
+          <StudyMap
+            nodes={graph.nodes}
+            links={graph.links}
+            availableCourses={graph.availableCourses}
+            filters={mapFilters}
+            onFilters={setMapFilters}
+            onOpen={openFromMap}
+          />
         ) : (
           <ConflictsView
             conflicts={conflicts}

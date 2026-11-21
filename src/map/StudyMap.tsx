@@ -1,0 +1,343 @@
+import {
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+  forceX,
+  forceY,
+  type Simulation,
+  type SimulationLinkDatum,
+  type SimulationNodeDatum,
+} from 'd3-force'
+import { select } from 'd3-selection'
+import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Course } from '../db/db'
+import type { MapFilters, MapLink, MapNode } from './graph'
+
+type SimNode = MapNode & SimulationNodeDatum
+type SimLink = SimulationLinkDatum<SimNode> & { source: SimNode | string; target: SimNode | string }
+
+type Props = {
+  nodes: MapNode[]
+  links: MapLink[]
+  availableCourses: Course[]
+  filters: MapFilters
+  onFilters: (f: MapFilters) => void
+  onOpen: (node: MapNode) => void
+}
+
+const LINK_DISTANCE: Record<MapNode['kind'], number> = { block: 22, assignment: 72, class: 56, course: 0 }
+const CHARGE: Record<MapNode['kind'], number> = { course: -600, assignment: -90, class: -70, block: -16 }
+/** Extra room around course hubs so their names don't run into each other. */
+const HUB_PADDING = 48
+
+/** Small stable pseudo-random offset from an id, so layouts start the same way every time. */
+function jitter(id: string, salt: number): number {
+  let h = 2166136261 ^ salt
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619)
+  return ((h >>> 0) / 4294967295 - 0.5) * 40
+}
+
+/**
+ * Starting spots: course hubs evenly around a circle, everything else next to the hub it
+ * belongs to (blocks via their assignment). Then the simulation only has to settle.
+ */
+function seedPositions(nodes: MapNode[], links: MapLink[]): Map<string, { x: number; y: number }> {
+  const parent = new Map(links.map((l) => [l.source, l.target]))
+  const hubs = nodes.filter((n) => n.kind === 'course')
+  const ring = 90 + hubs.length * 45
+  const out = new Map<string, { x: number; y: number }>()
+  hubs.forEach((h, i) => {
+    const a = (2 * Math.PI * i) / Math.max(1, hubs.length) - Math.PI / 2
+    out.set(h.id, hubs.length === 1 ? { x: 0, y: 0 } : { x: Math.cos(a) * ring, y: Math.sin(a) * ring })
+  })
+  const place = (id: string): { x: number; y: number } => {
+    const known = out.get(id)
+    if (known) return known
+    const up = parent.get(id)
+    const base = up ? place(up) : { x: 0, y: 0 }
+    const p = { x: base.x + jitter(id, 1), y: base.y + jitter(id, 2) }
+    out.set(id, p)
+    return p
+  }
+  for (const n of nodes) place(n.id)
+  return out
+}
+
+const endId = (end: SimNode | string) => (typeof end === 'string' ? end : end.id)
+
+export function StudyMap({ nodes, links, availableCourses, filters, onFilters, onOpen }: Props) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const simRef = useRef<Simulation<SimNode, SimLink> | null>(null)
+  const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+  const positions = useRef(new Map<string, { x: number; y: number }>())
+  const drag = useRef<{ node: SimNode; startX: number; startY: number; moved: boolean } | null>(null)
+
+  const [size, setSize] = useState({ w: 800, h: 600 })
+  const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity)
+  const [, setFrame] = useState(0)
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [focused, setFocused] = useState<string | null>(null)
+  const [simNodes, setSimNodes] = useState<SimNode[]>([])
+  const [simLinks, setSimLinks] = useState<SimLink[]>([])
+
+  // Track the container size.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => setSize({ w: entry.contentRect.width, h: entry.contentRect.height }))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Re-center when the map area changes size (window resize, phone rotation).
+  useEffect(() => {
+    const t = setTimeout(() => fit(), 150)
+    return () => clearTimeout(t)
+  }, [size.w, size.h]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pan and zoom (drags that start on a dot are left to the dot).
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const z = zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.2, 4])
+      .filter((e: Event) => e.type === 'wheel' || !(e.target as Element).closest?.('.map-node'))
+      .on('zoom', (e: { transform: ZoomTransform }) => setTransform(e.transform))
+    zoomRef.current = z
+    select(svg).call(z).on('dblclick.zoom', null)
+    return () => {
+      select(svg).on('.zoom', null)
+    }
+  }, [])
+
+  // (Re)start the simulation whenever the graph changes, keeping dots where they were.
+  useEffect(() => {
+    const seeds = seedPositions(nodes, links)
+    const sn: SimNode[] = nodes.map((n) => {
+      const p = positions.current.get(n.id) ?? seeds.get(n.id)!
+      return { ...n, x: p.x, y: p.y }
+    })
+    const sl: SimLink[] = links.map((l) => ({ ...l }))
+    const byId = new Map(sn.map((n) => [n.id, n]))
+    const sim = forceSimulation<SimNode, SimLink>(sn)
+      .force(
+        'link',
+        forceLink<SimNode, SimLink>(sl)
+          .id((d) => d.id)
+          .distance((l) => LINK_DISTANCE[byId.get(endId(l.source))?.kind ?? 'assignment'])
+          .strength((l) => (byId.get(endId(l.source))?.kind === 'block' ? 0.8 : 0.35)),
+      )
+      .force('charge', forceManyBody<SimNode>().strength((d) => CHARGE[d.kind]))
+      .force('collide', forceCollide<SimNode>().radius((d) => d.radius + (d.kind === 'course' ? HUB_PADDING : 3)))
+      .force('x', forceX(0).strength(0.04))
+      .force('y', forceY(0).strength(0.04))
+    let raf = 0
+    sim.on('tick', () => {
+      for (const n of sn) positions.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 })
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; setFrame((f) => f + 1) })
+    })
+    simRef.current = sim
+    setSimNodes(sn)
+    setSimLinks(sl)
+    const fitTimer = setTimeout(() => fit(sn), 700)
+    return () => {
+      sim.stop()
+      cancelAnimationFrame(raf)
+      clearTimeout(fitTimer)
+    }
+  }, [nodes, links])
+
+  function fit(list: SimNode[] = simNodes) {
+    const svg = svgRef.current
+    const z = zoomRef.current
+    if (!svg || !z || list.length === 0) return
+    const xs = list.map((n) => n.x ?? 0)
+    const ys = list.map((n) => n.y ?? 0)
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+    const { width, height } = svg.getBoundingClientRect()
+    const k = Math.min(2, Math.max(0.2, Math.min(width / (x1 - x0 + 120), height / (y1 - y0 + 120))))
+    const t = zoomIdentity.translate(width / 2 - (k * (x0 + x1)) / 2, height / 2 - (k * (y0 + y1)) / 2).scale(k)
+    select(svg).call(z.transform, t)
+  }
+
+  // Neighbors for hover highlighting, and clusters for course focus.
+  const neighbors = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    for (const l of links) {
+      if (!m.has(l.source)) m.set(l.source, new Set())
+      if (!m.has(l.target)) m.set(l.target, new Set())
+      m.get(l.source)!.add(l.target)
+      m.get(l.target)!.add(l.source)
+    }
+    return m
+  }, [links])
+
+  const cluster = useMemo(() => {
+    if (!focused) return null
+    const seen = new Set([focused])
+    let frontier = [focused]
+    for (let hop = 0; hop < 2; hop++) {
+      const next: string[] = []
+      for (const id of frontier) for (const n of neighbors.get(id) ?? []) if (!seen.has(n)) { seen.add(n); next.push(n) }
+      frontier = next
+    }
+    return seen
+  }, [focused, neighbors])
+
+  const highlight = hovered ? new Set([hovered, ...(neighbors.get(hovered) ?? [])]) : null
+  const isDim = (id: string) => (highlight ? !highlight.has(id) : cluster ? !cluster.has(id) : false)
+
+  function toGraph(e: React.PointerEvent): [number, number] {
+    const rect = svgRef.current!.getBoundingClientRect()
+    return transform.invert([e.clientX - rect.left, e.clientY - rect.top])
+  }
+
+  function onNodeDown(e: React.PointerEvent, node: SimNode) {
+    e.stopPropagation()
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    drag.current = { node, startX: e.clientX, startY: e.clientY, moved: false }
+    node.fx = node.x
+    node.fy = node.y
+    simRef.current?.alphaTarget(0.25).restart()
+  }
+
+  function onNodeMove(e: React.PointerEvent) {
+    const d = drag.current
+    if (!d) return
+    if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 4) d.moved = true
+    const [x, y] = toGraph(e)
+    d.node.fx = x
+    d.node.fy = y
+  }
+
+  function onNodeUp() {
+    const d = drag.current
+    drag.current = null
+    if (!d) return
+    d.node.fx = null
+    d.node.fy = null
+    simRef.current?.alphaTarget(0)
+    if (d.moved) return
+    if (d.node.kind === 'course') setFocused((f) => (f === d.node.id ? null : d.node.id))
+    else onOpen(d.node)
+  }
+
+  const hoveredNode = hovered ? simNodes.find((n) => n.id === hovered) : undefined
+  const showLabel = (n: SimNode) =>
+    n.kind === 'course' ||
+    n.kind === 'class' ||
+    (n.kind === 'assignment' && (transform.k >= 1.3 || highlight?.has(n.id) || cluster?.has(n.id))) ||
+    n.id === hovered
+
+  const toggleCourse = (id: string) =>
+    onFilters({
+      ...filters,
+      hiddenCourses: filters.hiddenCourses.includes(id)
+        ? filters.hiddenCourses.filter((x) => x !== id)
+        : [...filters.hiddenCourses, id],
+    })
+
+  return (
+    <div className="map-page">
+      <div className="map-filters" role="toolbar" aria-label="Study map filters">
+        {availableCourses.map((c) => {
+          const off = filters.hiddenCourses.includes(c.id)
+          return (
+            <button key={c.id} className={`chip${off ? ' off' : ''}`} aria-pressed={!off} onClick={() => toggleCourse(c.id)}>
+              <span className="dot" style={{ background: c.color }} />
+              {c.name}
+            </button>
+          )
+        })}
+        <span className="map-filter-sep" />
+        <label className="chip-check">
+          <input type="checkbox" checked={filters.hideFinished}
+            onChange={(e) => onFilters({ ...filters, hideFinished: e.target.checked })} />
+          Hide finished work
+        </label>
+        <label className="chip-check">
+          <input type="checkbox" checked={filters.showClasses}
+            onChange={(e) => onFilters({ ...filters, showClasses: e.target.checked })} />
+          Show classes
+        </label>
+        <button className="ghost-btn map-fit" onClick={() => fit()}>Fit</button>
+      </div>
+
+      <div className="map-canvas" ref={wrapRef}>
+        {nodes.length === 0 && (
+          <div className="map-empty muted">
+            Nothing coming up. Import a calendar or press <strong>Plan my study time</strong>.
+          </div>
+        )}
+        <svg ref={svgRef} width={size.w} height={size.h} role="img" aria-label="Study map"
+          onPointerMove={onNodeMove} onPointerUp={onNodeUp} onPointerCancel={onNodeUp}>
+          <g transform={transform.toString()}>
+            <g className="map-links">
+              {simLinks.map((l) => {
+                const s = l.source as SimNode
+                const t = l.target as SimNode
+                const dim = isDim(s.id) || isDim(t.id)
+                return (
+                  <line key={`${s.id}-${t.id}`} x1={s.x} y1={s.y} x2={t.x} y2={t.y} className={dim ? 'dim' : ''} />
+                )
+              })}
+            </g>
+            <g>
+              {simNodes.map((n) => {
+                const cls = ['map-node', `kind-${n.kind}`, n.status ? `status-${n.status}` : '', isDim(n.id) ? 'dim' : '', focused === n.id ? 'focused' : '']
+                return (
+                  <g key={n.id} className={cls.join(' ')} transform={`translate(${n.x ?? 0},${n.y ?? 0})`}
+                    onPointerDown={(e) => onNodeDown(e, n)}
+                    onPointerEnter={() => setHovered(n.id)} onPointerLeave={() => setHovered((h) => (h === n.id ? null : h))}
+                    tabIndex={n.kind === 'block' ? -1 : 0} role="button" aria-label={`${n.label}${n.detail ? `, ${n.detail}` : ''}`}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return
+                      e.preventDefault()
+                      if (n.kind === 'course') setFocused((f) => (f === n.id ? null : n.id))
+                      else onOpen(n)
+                    }}>
+                    {n.kind === 'class' ? (
+                      <rect x={-n.radius} y={-n.radius} width={n.radius * 2} height={n.radius * 2} rx={3} fill={n.color} />
+                    ) : (
+                      <circle r={n.radius} fill={n.color} />
+                    )}
+                  </g>
+                )
+              })}
+            </g>
+            {/* Labels sit in their own top layer so dots never cover them. */}
+            <g className="map-labels" aria-hidden="true">
+              {simNodes.filter(showLabel).map((n) => (
+                <text key={n.id} x={n.x ?? 0} y={(n.y ?? 0) + n.radius + 13} textAnchor="middle"
+                  className={`label label-${n.kind}${isDim(n.id) ? ' dim' : ''}`}>
+                  {n.label.length > 28 ? `${n.label.slice(0, 27)}…` : n.label}
+                </text>
+              ))}
+            </g>
+          </g>
+        </svg>
+
+        {hoveredNode && hoveredNode.kind !== 'course' && (
+          <div className="map-card">
+            <strong>{hoveredNode.label}</strong>
+            {hoveredNode.detail && <span>{hoveredNode.detail}</span>}
+            {hoveredNode.status === 'overdue' && <span className="tag red">Overdue</span>}
+            {hoveredNode.status === 'short' && <span className="tag amber">Needs more study time</span>}
+            {hoveredNode.status === 'done' && <span className="tag">Done</span>}
+          </div>
+        )}
+
+        <div className="map-legend muted small">
+          <span><i className="lg-dot" /> assignment</span>
+          <span><i className="lg-dot sm" /> study block</span>
+          <span><i className="lg-sq" /> class</span>
+          <span><i className="lg-ring red" /> overdue</span>
+          <span><i className="lg-ring amber" /> needs time</span>
+        </div>
+      </div>
+    </div>
+  )
+}

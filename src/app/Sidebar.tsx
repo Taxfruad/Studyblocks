@@ -6,11 +6,11 @@ import type { Commitment } from '../commitments/types'
 import type { Course, Feed } from '../db/db'
 import { db } from '../db/db'
 import { removeFeed, resyncFeed } from '../import/syncFeed'
-import { AlertIcon, CalendarIcon, ListIcon, LogoIcon, MoonIcon, PlusIcon, RefreshIcon, SparkIcon, SunIcon, XIcon } from './icons'
+import { AlertIcon, CalendarIcon, GraphIcon, ListIcon, LogoIcon, MoonIcon, PlusIcon, RefreshIcon, SparkIcon, SunIcon, XIcon } from './icons'
 import { relativeTime } from './relativeTime'
 import type { Theme } from './useTheme'
 
-export type View = 'calendar' | 'assignments' | 'conflicts'
+export type View = 'calendar' | 'assignments' | 'map' | 'conflicts'
 
 type Props = {
   view: View
@@ -67,6 +67,9 @@ export function Sidebar(props: Props) {
         </button>
         <button className={view === 'assignments' ? 'active' : ''} onClick={() => onView('assignments')}>
           <ListIcon /> Assignments
+        </button>
+        <button className={view === 'map' ? 'active' : ''} onClick={() => onView('map')}>
+          <GraphIcon /> Study map
         </button>
         <button className={view === 'conflicts' ? 'active' : ''} onClick={() => onView('conflicts')}>
           <AlertIcon /> Schedule

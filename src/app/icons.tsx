@@ -28,3 +28,5 @@ export const PinIcon = ({ size = 11 }: P) =>
   svg(size, <><path d="M12 17v5" /><path d="M9 10.8V4h6v6.8l3 3.2H6z" /></>)
 export const SparkIcon = ({ size = 16 }: P) =>
   svg(size, <><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="m6 6 2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" /></>)
+export const GraphIcon = ({ size = 16 }: P) =>
+  svg(size, <><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="7" r="2" /><circle cx="12" cy="17" r="3" /><path d="M8.2 7.3 10.6 14.4M16.4 8.4 13.5 14.6M8.4 6.2l7.6.6" /></>)
