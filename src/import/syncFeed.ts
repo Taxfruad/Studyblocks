@@ -1,4 +1,4 @@
-import { db, type Feed } from '../db/db'
+import { db, type Feed, type StudyBlocksDB } from '../db/db'
 import { importFeed, type ImportResult } from '../db/importFeed'
 import { parseIcs } from './parseIcs'
 import { buildSampleIcs } from './sample'
@@ -80,13 +80,16 @@ export async function resyncFeed(feed: Feed): Promise<ImportResult> {
   return syncFeedFromUrl(feed.url)
 }
 
-/** Removes a feed, its items, and any course that no longer has items. */
-export async function removeFeed(feedId: string): Promise<void> {
-  await db.transaction('rw', db.feeds, db.items, db.courses, async () => {
-    await db.items.where('feedId').equals(feedId).delete()
-    await db.feeds.delete(feedId)
-    const used = new Set((await db.items.toArray()).map((i) => i.courseId))
-    const unused = (await db.courses.toArray()).filter((c) => !used.has(c.id)).map((c) => c.id)
-    await db.courses.bulkDelete(unused)
+/** Removes a feed, its items and their study blocks, and any course that no longer has items. */
+export async function removeFeed(feedId: string, database: StudyBlocksDB = db): Promise<void> {
+  const d = database
+  await d.transaction('rw', [d.feeds, d.items, d.courses, d.studyBlocks], async () => {
+    const itemIds = await d.items.where('feedId').equals(feedId).primaryKeys()
+    await d.studyBlocks.where('itemId').anyOf(itemIds).delete()
+    await d.items.bulkDelete(itemIds)
+    await d.feeds.delete(feedId)
+    const used = new Set((await d.items.toArray()).map((i) => i.courseId))
+    const unused = (await d.courses.toArray()).filter((c) => !used.has(c.id)).map((c) => c.id)
+    await d.courses.bulkDelete(unused)
   })
 }

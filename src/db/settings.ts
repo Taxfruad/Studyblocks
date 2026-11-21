@@ -1,3 +1,4 @@
+import { normalizeStudySettings, type StudySettings } from '../study/types'
 import type { StudyBlocksDB } from './db'
 
 /** Warn when commitments are closer together than this many minutes. 0 turns warnings off. */
@@ -17,4 +18,14 @@ export async function getMinGap(db: StudyBlocksDB): Promise<number> {
 
 export async function setMinGap(db: StudyBlocksDB, minutes: number): Promise<void> {
   await db.settings.put({ key: MIN_GAP_KEY, value: normalizeMinGap(minutes) })
+}
+
+const STUDY_KEY = 'study'
+
+export async function getStudySettings(db: StudyBlocksDB): Promise<StudySettings> {
+  return normalizeStudySettings((await db.settings.get(STUDY_KEY))?.value)
+}
+
+export async function setStudySettings(db: StudyBlocksDB, settings: StudySettings): Promise<void> {
+  await db.settings.put({ key: STUDY_KEY, value: normalizeStudySettings(settings) })
 }

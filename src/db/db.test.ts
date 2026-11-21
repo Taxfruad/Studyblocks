@@ -35,3 +35,15 @@ describe('min gap setting', () => {
     expect(normalizeMinGap(9999)).toBe(240)
   })
 })
+
+describe('study settings', () => {
+  it('defaults, saves, and cleans up', async () => {
+    const { getStudySettings, setStudySettings } = await import('./settings')
+    const { DEFAULT_STUDY_SETTINGS } = await import('../study/types')
+    const db = new StudyBlocksDB('study-settings-test')
+    expect(await getStudySettings(db)).toEqual(DEFAULT_STUDY_SETTINGS)
+    await setStudySettings(db, { ...DEFAULT_STUDY_SETTINGS, bufferMinutes: 30 })
+    expect((await getStudySettings(db)).bufferMinutes).toBe(30)
+    await db.delete()
+  })
+})

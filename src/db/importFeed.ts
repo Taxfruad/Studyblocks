@@ -24,7 +24,7 @@ export async function importFeed(
   const incoming = new Map<string, ParsedItem>()
   for (const p of parsed) incoming.set(itemId(feedId, p.uid), p)
 
-  return db.transaction('rw', db.items, db.courses, async () => {
+  return db.transaction('rw', db.items, db.courses, db.studyBlocks, async () => {
     const courseIds = await ensureCourses(db, [...incoming.values()])
     const existing = new Map(
       (await db.items.where('feedId').equals(feedId).toArray()).map((i) => [i.id, i]),
@@ -51,6 +51,7 @@ export async function importFeed(
           done: old.done,
           userEdited: old.userEdited,
           removedFromSource: false,
+          ...(old.estimateMinutes !== undefined ? { estimateMinutes: old.estimateMinutes } : {}),
         })
         result.updated++
       }
@@ -70,6 +71,7 @@ export async function importFeed(
 
     await db.items.bulkPut(toPut)
     await db.items.bulkDelete(toDelete)
+    if (toDelete.length) await db.studyBlocks.where('itemId').anyOf(toDelete).delete()
     return result
   })
 }

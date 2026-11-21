@@ -123,3 +123,22 @@ describe('importFeed', () => {
     expect((await db.items.get('feed-a|event-assignment-1'))?.title).toBe('Lab 7 v2')
   })
 })
+
+describe('study data on re-import (milestone 3)', () => {
+  it('keeps the student’s time estimate', async () => {
+    await importFeed(db, 'feed-a', [lab])
+    await db.items.update('feed-a|event-assignment-1', { estimateMinutes: 45 })
+    await importFeed(db, 'feed-a', [{ ...lab, title: 'Lab 7 (updated)' }])
+    expect((await db.items.get('feed-a|event-assignment-1'))?.estimateMinutes).toBe(45)
+  })
+
+  it('deletes study blocks of items that were deleted', async () => {
+    await importFeed(db, 'feed-a', [lab, quiz])
+    await db.studyBlocks.bulkAdd([
+      { id: 's1', itemId: 'feed-a|event-assignment-1', start: '2026-12-01T17:00:00.000Z', end: '2026-12-01T18:00:00.000Z', pinned: false },
+      { id: 's2', itemId: 'feed-a|event-assignment-2', start: '2026-12-01T19:00:00.000Z', end: '2026-12-01T20:00:00.000Z', pinned: true },
+    ])
+    await importFeed(db, 'feed-a', [quiz])
+    expect((await db.studyBlocks.toArray()).map((b) => b.id)).toEqual(['s2'])
+  })
+})
