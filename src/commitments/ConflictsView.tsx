@@ -2,11 +2,21 @@ import { useState } from 'react'
 import { formatDue } from '../calendar/dates'
 import { db } from '../db/db'
 import { normalizeMinGap, setMinGap } from '../db/settings'
+import { formatMinutes } from '../study/applyPlan'
+import type { Coverage } from '../study/coverage'
+import { StudySettingsForm } from '../study/StudySettingsForm'
+import type { StudySettings } from '../study/types'
 import { CONFLICT_WINDOW_DAYS, type Conflict } from './conflicts'
 
 type Props = {
   conflicts: Conflict[]
   minGap: number
+  /** Upcoming assignments that don't have enough study time yet. */
+  short: Coverage[]
+  studySettings: StudySettings
+  planning: boolean
+  onPlan: () => void
+  onSelectItem: (itemId: string) => void
   onJump: (isoOrDate: string) => void
 }
 
@@ -28,7 +38,7 @@ function describe(c: Conflict): { title: string; detail: string } {
   }
 }
 
-export function ConflictsView({ conflicts, minGap, onJump }: Props) {
+export function ConflictsView({ conflicts, minGap, short, studySettings, planning, onPlan, onSelectItem, onJump }: Props) {
   const red = conflicts.filter((c) => c.kind !== 'tight')
   const amber = conflicts.filter((c) => c.kind === 'tight')
 
@@ -46,7 +56,12 @@ export function ConflictsView({ conflicts, minGap, onJump }: Props) {
 
   return (
     <div className="conflicts-page">
-      <h1 className="page-title">Conflicts</h1>
+      <header className="schedule-header">
+        <h1 className="page-title">Schedule</h1>
+        <button className="primary-btn" onClick={onPlan} disabled={planning}>
+          {planning ? 'Planning…' : 'Plan my study time'}
+        </button>
+      </header>
       <p className="muted small">Checking your commitments and deadlines for the next {CONFLICT_WINDOW_DAYS / 7} weeks.</p>
 
       <section className="group conflict-group red">
@@ -65,7 +80,28 @@ export function ConflictsView({ conflicts, minGap, onJump }: Props) {
         )}
       </section>
 
+      <section className="group conflict-group amber">
+        <h2>Needs more study time <span className="count">{short.length}</span></h2>
+        {short.length === 0 ? (
+          <p className="muted">Every upcoming assignment has enough study time planned.</p>
+        ) : (
+          <ul>
+            {short.map((c) => (
+              <li key={c.item.id}>
+                <button className="conflict-row" onClick={() => onSelectItem(c.item.id)}>
+                  <span className="conflict-title">{c.item.title}</span>
+                  <span className="conflict-detail">
+                    Needs {formatMinutes(c.short)} more · {formatMinutes(c.planned + c.studied)} of {formatMinutes(c.estimate)} planned
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <GapSetting key={minGap} minGap={minGap} />
+      <StudySettingsForm key={JSON.stringify(studySettings)} settings={studySettings} />
     </div>
   )
 }

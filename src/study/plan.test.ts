@@ -132,6 +132,13 @@ describe('planStudy', () => {
     expect(add.reduce((s, b) => s + minutes(b), 0)).toBe(60)
   })
 
+  it('never makes a block shorter than the minimum, even for a small leftover', () => {
+    // 60 of 75 minutes were already studied, leaving a 15-minute scrap.
+    const studied: StudyBlock = { id: 'p', itemId: 'hw', start: iso('2026-11-19', '10:00'), end: iso('2026-11-19', '11:00'), pinned: false }
+    const { add } = plan({ items: [assignment('hw', iso('2026-11-22', '00:00'), 75)], blocks: [studied] })
+    expect(add.map(minutes)).toEqual([30])
+  })
+
   it('removes future blocks whose assignment no longer exists', () => {
     const orphan: StudyBlock = { id: 'o', itemId: 'gone', start: iso('2026-11-21', '10:00'), end: iso('2026-11-21', '11:00'), pinned: false }
     expect(plan({ items: [], blocks: [orphan] }).remove).toEqual(['o'])

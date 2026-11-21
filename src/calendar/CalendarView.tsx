@@ -8,8 +8,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { expandCommitments } from '../commitments/expand'
 import type { Commitment } from '../commitments/types'
 import type { CalendarItem, Course } from '../db/db'
+import type { StudyBlock } from '../study/types'
+import { PinIcon } from '../app/icons'
 import { addDays, localDateKey } from './dates'
-import { commitmentEvents, toCalendarEvents, type EventProps, type Marks } from './toEvents'
+import { commitmentEvents, studyBlockEvents, toCalendarEvents, type EventProps, type Marks } from './toEvents'
 
 export type CommitmentChange = {
   occurrenceId: string
@@ -20,10 +22,13 @@ export type CommitmentChange = {
   revert: () => void
 }
 
+export type StudyBlockChange = { blockId: string; start: Date; end: Date; revert: () => void }
+
 type Props = {
   items: CalendarItem[]
   courses: Course[]
   commitments: Commitment[]
+  studyBlocks: StudyBlock[]
   marks: Marks
   /** Jump here when it changes (`nonce` lets the same date be requested twice). */
   focus?: { date: string; nonce: number }
@@ -31,6 +36,8 @@ type Props = {
   onSelectCommitment: (commitmentId: string, occurrenceId: string) => void
   onCreateRange: (start: Date, end: Date) => void
   onChangeCommitment: (change: CommitmentChange) => void
+  onSelectStudyBlock: (blockId: string) => void
+  onChangeStudyBlock: (change: StudyBlockChange) => void
 }
 
 const isNarrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches
@@ -47,11 +54,22 @@ function renderEvent(arg: EventContentArg) {
       </div>
     )
   }
+  if (props.kind === 'study') {
+    return (
+      <div className="sb-study-content" title={`${arg.event.title} · ${arg.timeText}`}>
+        <div className="sb-study-title">
+          {arg.event.title}
+          {arg.event.classNames.includes('is-pinned') && <span className="pin" title="Pinned"><PinIcon /></span>}
+        </div>
+        <div className="sb-study-time">{arg.timeText}</div>
+      </div>
+    )
+  }
   return true // FullCalendar renders timed events itself
 }
 
 export function CalendarView(props: Props) {
-  const { items, courses, commitments, marks, focus } = props
+  const { items, courses, commitments, studyBlocks, marks, focus } = props
   const ref = useRef<FullCalendar>(null)
   const narrow = isNarrow()
   const [range, setRange] = useState(() => {
@@ -61,8 +79,12 @@ export function CalendarView(props: Props) {
 
   const events = useMemo(() => {
     const occs = expandCommitments(commitments, range.from, range.to)
-    return [...toCalendarEvents(items, courses, marks), ...commitmentEvents(occs, courses, marks)]
-  }, [items, courses, commitments, marks, range])
+    return [
+      ...toCalendarEvents(items, courses, marks),
+      ...commitmentEvents(occs, courses, marks),
+      ...studyBlockEvents(studyBlocks, items, courses),
+    ]
+  }, [items, courses, commitments, studyBlocks, marks, range])
 
   useEffect(() => {
     if (!focus) return
@@ -86,13 +108,16 @@ export function CalendarView(props: Props) {
   function onClick(info: EventClickArg) {
     const p = info.event.extendedProps as EventProps
     if (p.kind === 'commitment') props.onSelectCommitment(p.commitmentId, p.occurrenceId)
+    else if (p.kind === 'study') props.onSelectStudyBlock(p.blockId)
     else props.onSelectItem(p.itemId)
   }
 
   function onChange(info: EventChangeArg) {
     const p = info.event.extendedProps as EventProps
     const { start, end } = info.event
-    if (p.kind !== 'commitment' || !start || !end) return info.revert()
+    if (!start || !end) return info.revert()
+    if (p.kind === 'study') return props.onChangeStudyBlock({ blockId: p.blockId, start, end, revert: info.revert })
+    if (p.kind !== 'commitment') return info.revert()
     props.onChangeCommitment({ occurrenceId: p.occurrenceId, commitmentId: p.commitmentId, start, end, revert: info.revert })
   }
 

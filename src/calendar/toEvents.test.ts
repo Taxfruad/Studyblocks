@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CalendarItem, Course } from '../db/db'
 import { localDateKey } from './dates'
 import { TYPE_COLORS } from '../commitments/colors'
-import { commitmentEvents, DEFAULT_EVENT_COLOR, toCalendarEvents } from './toEvents'
+import { commitmentEvents, DEFAULT_EVENT_COLOR, studyBlockEvents, toCalendarEvents } from './toEvents'
 
 const base = { feedId: 'f', done: false, userEdited: false, removedFromSource: false }
 const courses: Course[] = [{ id: 'c1', name: 'CS 210', color: '#8b7cf6' }]
@@ -70,5 +70,33 @@ describe('conflict marks and commitments', () => {
     expect(work.classNames).toEqual(['sb-commitment', 'type-work', 'is-tight'])
     const [cls] = commitmentEvents([{ ...occ, type: 'class', courseId: 'c1' }], courses)
     expect(cls.color).toBe('#8b7cf6')
+  })
+})
+
+describe('studyBlockEvents', () => {
+  const lab: CalendarItem = { ...base, id: 'lab', uid: 'lab', kind: 'assignment', title: 'Lab 9', start: '2026-12-05', allDay: true, courseId: 'c1' }
+  const block = { id: 'b1', itemId: 'lab', start: '2026-12-01T17:00:00.000Z', end: '2026-12-01T18:00:00.000Z', pinned: false }
+
+  it('shows a translucent block in the course color, titled after the assignment', () => {
+    const [ev] = studyBlockEvents([block], [lab], courses)
+    expect(ev).toMatchObject({ title: 'Lab 9', start: block.start, end: block.end, editable: true, borderColor: '#8b7cf6' })
+    expect(ev.backgroundColor).toBe('rgba(139, 124, 246, 0.22)')
+    expect(ev.classNames).toEqual(['sb-study'])
+    expect(ev.extendedProps).toEqual({ kind: 'study', blockId: 'b1', itemId: 'lab' })
+  })
+
+  it('marks pinned blocks, and crosses out (and locks) blocks of finished work', () => {
+    const [pinned] = studyBlockEvents([{ ...block, pinned: true }], [lab], courses)
+    expect(pinned.classNames).toContain('is-pinned')
+    const [crossed] = studyBlockEvents([block], [{ ...lab, done: true }], courses)
+    expect(crossed.classNames).toContain('is-crossed')
+    expect(crossed.editable).toBe(false)
+    // Un-checking the assignment brings the block back to normal.
+    const [again] = studyBlockEvents([block], [{ ...lab, done: false }], courses)
+    expect(again.classNames).not.toContain('is-crossed')
+  })
+
+  it('skips blocks whose assignment is gone', () => {
+    expect(studyBlockEvents([block], [], courses)).toEqual([])
   })
 })

@@ -144,9 +144,12 @@ export function planStudy(input: PlanInput): PlanResult {
         for (const slot of daySlots) {
           const end = Math.min(slot.end, due)
           const length = (end - slot.start) / MIN
-          const want = Math.min(target, Math.ceil(remaining / 15) * 15, room)
+          // A small leftover still gets a full minimum-length block (a few minutes over
+          // the estimate beats a scrap of a block).
+          const need = Math.max(Math.ceil(remaining / 15) * 15, settings.chunkMinMinutes)
+          const want = Math.min(target, need, room)
           const chunk = Math.floor(Math.min(want, length) / 15) * 15
-          if (chunk <= 0 || chunk < Math.min(settings.chunkMinMinutes, remaining)) continue
+          if (chunk < settings.chunkMinMinutes) continue
           add.push({
             id: newId(),
             itemId: item.id,

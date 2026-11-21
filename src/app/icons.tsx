@@ -24,3 +24,7 @@ export const LogoIcon = ({ size = 20 }: P) =>
   svg(size, <><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="5" rx="1.5" /><rect x="13" y="10" width="8" height="11" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /></>)
 export const AlertIcon = ({ size = 16 }: P) =>
   svg(size, <><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></>)
+export const PinIcon = ({ size = 11 }: P) =>
+  svg(size, <><path d="M12 17v5" /><path d="M9 10.8V4h6v6.8l3 3.2H6z" /></>)
+export const SparkIcon = ({ size = 16 }: P) =>
+  svg(size, <><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="m6 6 2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" /></>)

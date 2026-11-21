@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { AssignmentList } from '../assignments/AssignmentList'
 import { addDays, localDateKey } from '../calendar/dates'
-import { CalendarView, type CommitmentChange } from '../calendar/CalendarView'
+import { CalendarView, type CommitmentChange, type StudyBlockChange } from '../calendar/CalendarView'
 import { CommitmentForm, type FormInitial } from '../commitments/CommitmentForm'
 import { conflictMarks, CONFLICT_WINDOW_DAYS, findConflicts } from '../commitments/conflicts'
 import { ConflictsView } from '../commitments/ConflictsView'
@@ -12,7 +12,10 @@ import { ScopePrompt } from '../commitments/ScopePrompt'
 import { buildTestShift } from '../commitments/testShift'
 import type { Commitment } from '../commitments/types'
 import { db } from '../db/db'
-import { getMinGap } from '../db/settings'
+import { getMinGap, getStudySettings } from '../db/settings'
+import { planMyStudyTime, summarize } from '../study/applyPlan'
+import { coverage } from '../study/coverage'
+import { StudyBlockDialog } from '../study/StudyBlockDialog'
 import { ImportDialog } from '../import/ImportDialog'
 import { loadSample } from '../import/syncFeed'
 import { MenuIcon } from './icons'
@@ -44,16 +47,20 @@ export default function App() {
   const [pending, setPending] = useState<PendingScope | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ date: string; nonce: number }>()
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null)
+  const [planning, setPlanning] = useState(false)
 
   const feeds = useLiveQuery(() => db.feeds.toArray(), [])
   const courses = useLiveQuery(() => db.courses.orderBy('name').toArray(), [])
   const items = useLiveQuery(() => db.items.toArray(), [])
   const commitments = useLiveQuery(() => db.commitments.toArray(), [])
   const minGap = useLiveQuery(() => getMinGap(db), [])
+  const studyBlocks = useLiveQuery(() => db.studyBlocks.toArray(), [])
+  const studySettings = useLiveQuery(() => getStudySettings(db), [])
 
   useEffect(() => {
     if (!notice) return
-    const id = setTimeout(() => setNotice(null), 4000)
+    const id = setTimeout(() => setNotice(null), 6000)
     return () => clearTimeout(id)
   }, [notice])
 
@@ -64,8 +71,16 @@ export default function App() {
     return findConflicts(occs, items, { now, minGapMinutes: minGap })
   }, [items, commitments, minGap, now])
   const marks = useMemo(() => conflictMarks(conflicts), [conflicts])
+  const short = useMemo(
+    () => (items && studyBlocks ? coverage(items, studyBlocks, now).filter((c) => c.short > 0) : []),
+    [items, studyBlocks, now],
+  )
 
-  if (!feeds || !courses || !items || !commitments || minGap === undefined) return <div className="loading" />
+  if (!feeds || !courses || !items || !commitments || minGap === undefined || !studyBlocks || !studySettings) {
+    return <div className="loading" />
+  }
+  const block = selectedBlock ? studyBlocks.find((b) => b.id === selectedBlock) : undefined
+  const blockItem = block ? items.find((i) => i.id === block.itemId) : undefined
 
   const selectedItem = selected ? items.find((i) => i.id === selected) : undefined
   const editing = form?.commitmentId ? commitments.find((c) => c.id === form.commitmentId) : undefined
@@ -103,6 +118,33 @@ export default function App() {
     })
   }
 
+  async function plan() {
+    setPlanning(true)
+    setMenuOpen(false)
+    try {
+      setNotice(summarize(await planMyStudyTime()))
+    } catch (err) {
+      setNotice(`Couldn't plan: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setPlanning(false)
+    }
+  }
+
+  function changeStudyBlock(change: StudyBlockChange) {
+    const problem = validateTimes(change.start, change.end)
+    if (problem) {
+      change.revert()
+      setNotice(problem.replace('Commitments have', 'Study blocks have'))
+      return
+    }
+    // Moving a block by hand pins it, so re-planning leaves it where the student put it.
+    void db.studyBlocks.update(change.blockId, {
+      start: change.start.toISOString(),
+      end: change.end.toISOString(),
+      pinned: true,
+    })
+  }
+
   async function loadTestShift() {
     await db.commitments.bulkAdd(buildTestShift(new Date()))
     setNotice('Added a test work shift: Tue/Thu 4–9 pm and Sat 10 am–4 pm.')
@@ -123,6 +165,8 @@ export default function App() {
         onAddCommitment={() => { setForm({ initial: { date: localDateKey(new Date()) } }); setMenuOpen(false) }}
         onEditCommitment={(id) => { setForm({ commitmentId: id }); setMenuOpen(false) }}
         onLoadTestShift={() => void loadTestShift()}
+        onPlan={() => void plan()}
+        planning={planning}
         theme={theme}
         onToggleTheme={toggleTheme}
         onImport={() => { setImporting(true); setMenuOpen(false) }}
@@ -153,6 +197,7 @@ export default function App() {
             items={items}
             courses={courses}
             commitments={commitments}
+            studyBlocks={studyBlocks}
             marks={marks}
             focus={focus}
             onSelectItem={setSelected}
@@ -163,6 +208,8 @@ export default function App() {
               setForm({ initial: { date: localDateKey(start), startTime: hhmm(start), endTime: hhmm(end) === '00:00' ? '24:00' : hhmm(end) } })
             }}
             onChangeCommitment={changeCommitment}
+            onSelectStudyBlock={setSelectedBlock}
+            onChangeStudyBlock={changeStudyBlock}
           />
         ) : view === 'assignments' ? (
           <AssignmentList items={items} courses={courses} onSelect={setSelected} />
@@ -170,6 +217,11 @@ export default function App() {
           <ConflictsView
             conflicts={conflicts}
             minGap={minGap}
+            short={short}
+            studySettings={studySettings}
+            planning={planning}
+            onPlan={() => void plan()}
+            onSelectItem={setSelected}
             onJump={(date) => { setFocus({ date, nonce: Date.now() }); go('calendar') }}
           />
         )}
@@ -181,7 +233,18 @@ export default function App() {
         <ItemDetail
           item={selectedItem}
           course={courses.find((c) => c.id === selectedItem.courseId)}
+          blocks={studyBlocks}
           onClose={() => setSelected(null)}
+        />
+      )}
+      {block && blockItem && (
+        <StudyBlockDialog
+          key={block.id}
+          block={block}
+          item={blockItem}
+          course={courses.find((c) => c.id === blockItem.courseId)}
+          onOpenAssignment={() => setSelected(blockItem.id)}
+          onClose={() => setSelectedBlock(null)}
         />
       )}
       {form && (

@@ -6,7 +6,7 @@ import type { Commitment } from '../commitments/types'
 import type { Course, Feed } from '../db/db'
 import { db } from '../db/db'
 import { removeFeed, resyncFeed } from '../import/syncFeed'
-import { AlertIcon, CalendarIcon, ListIcon, LogoIcon, MoonIcon, PlusIcon, RefreshIcon, SunIcon, XIcon } from './icons'
+import { AlertIcon, CalendarIcon, ListIcon, LogoIcon, MoonIcon, PlusIcon, RefreshIcon, SparkIcon, SunIcon, XIcon } from './icons'
 import { relativeTime } from './relativeTime'
 import type { Theme } from './useTheme'
 
@@ -24,6 +24,8 @@ type Props = {
   onAddCommitment: () => void
   onEditCommitment: (id: string) => void
   onLoadTestShift: () => void
+  onPlan: () => void
+  planning: boolean
   theme: Theme
   onToggleTheme: () => void
   onImport: () => void
@@ -67,13 +69,17 @@ export function Sidebar(props: Props) {
           <ListIcon /> Assignments
         </button>
         <button className={view === 'conflicts' ? 'active' : ''} onClick={() => onView('conflicts')}>
-          <AlertIcon /> Conflicts
+          <AlertIcon /> Schedule
           <span className="badges">
             {conflictCount > 0 && <span className="badge red" title={`${conflictCount} conflicts`}>{conflictCount}</span>}
             {warningCount > 0 && <span className="badge amber" title={`${warningCount} tight squeezes`}>{warningCount}</span>}
           </span>
         </button>
       </nav>
+
+      <button className="plan-btn" onClick={props.onPlan} disabled={props.planning}>
+        <SparkIcon /> {props.planning ? 'Planning…' : 'Plan my study time'}
+      </button>
 
       <section className="side-section">
         <header>
