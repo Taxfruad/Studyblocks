@@ -1366,7 +1366,26 @@ a {
   }
 }
 
-/* ---------- milestone 4: study map ---------- */
+/* ---------- study map ("constellation") ---------- */
+
+:root,
+:root[data-theme='dark'] {
+  --map-bg: #17181b;
+  --map-grid: #2c2e33;
+  --map-link: #3b3e45;
+  --map-link-hot: #7d828c;
+  --map-label: #8f939b;
+  --map-label-strong: #d7d9de;
+}
+
+:root[data-theme='light'] {
+  --map-bg: #fafafb;
+  --map-grid: #dcdde2;
+  --map-link: #cfd1d7;
+  --map-link-hot: #7d828c;
+  --map-label: #7a7d85;
+  --map-label-strong: #2a2c31;
+}
 
 .map-page {
   flex: 1;
@@ -1378,8 +1397,8 @@ a {
 .map-filters {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
+  gap: 4px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: none;
@@ -1391,42 +1410,57 @@ a {
   align-items: center;
   gap: 6px;
   flex: none;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 6px;
   background: none;
-  color: var(--text);
+  color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chip:hover,
+.chip-check:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.chip[aria-pressed='true'] {
+  color: var(--text);
+}
+
+.chip .dot {
+  width: 7px;
+  height: 7px;
 }
 
 .chip.off {
   color: var(--text-faint);
-  text-decoration: line-through;
 }
 
 .chip.off .dot {
-  opacity: 0.3;
+  opacity: 0.25;
 }
 
 .chip-check input {
   margin: 0;
+  width: 13px;
+  height: 13px;
   accent-color: var(--accent);
 }
 
 .map-filter-sep {
   flex: none;
   width: 1px;
-  height: 18px;
+  height: 14px;
+  margin: 0 4px;
   background: var(--border);
 }
 
 .map-fit {
-  flex: none;
   margin-left: auto;
-  padding: 4px 12px;
-  font-size: 12px;
 }
 
 .map-canvas {
@@ -1434,6 +1468,7 @@ a {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  background: var(--map-bg);
 }
 
 .map-canvas svg {
@@ -1446,83 +1481,104 @@ a {
   cursor: grabbing;
 }
 
+.map-grid-dot {
+  fill: var(--map-grid);
+}
+
 .map-links line {
-  stroke: var(--text-faint);
-  stroke-opacity: 0.45;
-  stroke-width: 1;
-  transition: stroke-opacity 0.15s;
+  stroke: var(--map-link);
+  stroke-width: 0.8;
+  transition: stroke 0.2s, stroke-opacity 0.2s;
+}
+
+.map-links line.hot {
+  stroke: var(--map-link-hot);
 }
 
 .map-links line.dim {
-  stroke-opacity: 0.08;
+  stroke-opacity: 0.15;
 }
 
 .map-node {
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.2s;
+}
+
+.map-node .hit {
+  fill: transparent;
+}
+
+.map-node .shape {
+  transition: r 0.15s;
 }
 
 .map-node:focus {
   outline: none;
 }
 
-.map-node:focus-visible circle,
-.map-node:focus-visible rect {
+.map-node:focus-visible .shape {
   stroke: var(--accent);
-  stroke-width: 3;
+  stroke-width: 2;
 }
 
 .map-node.dim {
-  opacity: 0.15;
+  opacity: 0.12;
 }
 
-.map-node.kind-course circle {
-  stroke: var(--bg);
-  stroke-width: 3;
-}
-
-.map-node.kind-course.focused circle {
-  stroke: var(--text);
+.map-node.kind-block .shape {
+  opacity: 0.8;
 }
 
 .map-node.status-done,
 .map-node.status-past {
-  opacity: 0.35;
+  opacity: 0.3;
 }
 
 .map-node.status-done.dim,
 .map-node.status-past.dim {
-  opacity: 0.1;
+  opacity: 0.08;
 }
 
-.map-node.status-overdue circle {
+.map-node.status-overdue .shape {
   stroke: var(--danger);
-  stroke-width: 3;
+  stroke-width: 1.8;
 }
 
-.map-node.status-short circle {
+.map-node.status-short .shape {
   stroke: var(--warn);
-  stroke-width: 3;
+  stroke-width: 1.8;
+}
+
+.map-node.focused .shape {
+  stroke: var(--map-label-strong);
+  stroke-width: 1.5;
 }
 
 .map-labels .label {
-  fill: var(--text-muted);
-  font-size: 10px;
+  fill: var(--map-label);
+  font-size: 7.5px;
+  font-weight: 500;
   pointer-events: none;
   paint-order: stroke;
-  stroke: var(--bg);
+  stroke: var(--map-bg);
   stroke-width: 3px;
   stroke-linejoin: round;
+  transition: opacity 0.2s;
 }
 
 .map-labels .label-course {
-  fill: var(--text);
-  font-size: 13px;
+  fill: var(--map-label-strong);
+  font-size: 9.5px;
   font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.map-labels .label-overdue {
+  fill: var(--danger);
 }
 
 .map-labels .label.dim {
-  opacity: 0.15;
+  opacity: 0.12;
 }
 
 .map-empty {
@@ -1538,22 +1594,24 @@ a {
 .map-card {
   position: absolute;
   top: 12px;
-  left: 18px;
+  left: 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-width: min(320px, calc(100% - 36px));
-  padding: 8px 12px;
+  max-width: min(300px, calc(100% - 28px));
+  padding: 8px 11px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-raised);
+  background: color-mix(in srgb, var(--bg-raised) 88%, transparent);
+  backdrop-filter: blur(6px);
   box-shadow: var(--shadow);
   font-size: 12px;
   pointer-events: none;
 }
 
 .map-card strong {
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .map-card span {
@@ -1561,7 +1619,8 @@ a {
 }
 
 .map-card .tag {
-  margin-top: 4px;
+  margin-top: 3px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -1575,54 +1634,56 @@ a {
 
 .map-legend {
   position: absolute;
-  right: 18px;
-  bottom: 12px;
+  left: 14px;
+  bottom: 10px;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px 14px;
+  gap: 2px 14px;
+  color: var(--text-faint);
+  font-size: 11px;
   pointer-events: none;
 }
 
 .map-legend span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .lg-dot,
 .lg-sq,
 .lg-ring {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--text-faint);
 }
 
 .lg-dot.sm {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 .lg-sq {
-  border-radius: 2px;
+  border-radius: 1.5px;
 }
 
 .lg-ring {
   background: none;
-  border: 2px solid var(--danger);
+  border: 1.5px solid var(--danger);
 }
 
 .lg-ring.amber {
   border-color: var(--warn);
 }
 
-@media (max-width: 760px) {
-  .map-filters {
-    padding: 10px 16px;
-  }
+.lg-hint {
+  margin-left: 6px;
+  opacity: 0.8;
+}
 
+@media (max-width: 760px) {
   .map-legend {
     display: none;
   }

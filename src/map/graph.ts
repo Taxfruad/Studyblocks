@@ -36,10 +36,10 @@ export const MAP_WINDOW_DAYS = 56
 /** Unfinished work this overdue still shows (in red). */
 export const OVERDUE_DAYS = 14
 
-const RADIUS = { course: 22, class: 9, block: 4 }
+const RADIUS = { course: 7, class: 4, block: 2 }
 
 export function assignmentRadius(estimateMinutes: number): number {
-  return Math.min(16, Math.max(7, 6 + 4 * Math.sqrt(estimateMinutes / 60)))
+  return Math.min(6, Math.max(3.5, 3.5 + 1.2 * Math.sqrt(estimateMinutes / 60)))
 }
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })

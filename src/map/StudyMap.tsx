@@ -27,10 +27,15 @@ type Props = {
   onOpen: (node: MapNode) => void
 }
 
-const LINK_DISTANCE: Record<MapNode['kind'], number> = { block: 22, assignment: 72, class: 56, course: 0 }
-const CHARGE: Record<MapNode['kind'], number> = { course: -600, assignment: -90, class: -70, block: -16 }
+const LINK_DISTANCE: Record<MapNode['kind'], number> = { block: 13, assignment: 48, class: 38, course: 0 }
+const CHARGE: Record<MapNode['kind'], number> = { course: -420, assignment: -55, class: -45, block: -8 }
 /** Extra room around course hubs so their names don't run into each other. */
-const HUB_PADDING = 48
+const HUB_PADDING = 36
+/** Zoom level at which every assignment and class name shows. */
+const LABEL_ZOOM = 1.6
+/** Invisible click target, so tiny dots stay easy to hit. */
+const HIT_RADIUS = 9
+const GRID = 18
 
 /** Small stable pseudo-random offset from an id, so layouts start the same way every time. */
 function jitter(id: string, salt: number): number {
@@ -46,7 +51,7 @@ function jitter(id: string, salt: number): number {
 function seedPositions(nodes: MapNode[], links: MapLink[]): Map<string, { x: number; y: number }> {
   const parent = new Map(links.map((l) => [l.source, l.target]))
   const hubs = nodes.filter((n) => n.kind === 'course')
-  const ring = 90 + hubs.length * 45
+  const ring = 60 + hubs.length * 32
   const out = new Map<string, { x: number; y: number }>()
   hubs.forEach((h, i) => {
     const a = (2 * Math.PI * i) / Math.max(1, hubs.length) - Math.PI / 2
@@ -131,9 +136,9 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
           .strength((l) => (byId.get(endId(l.source))?.kind === 'block' ? 0.8 : 0.35)),
       )
       .force('charge', forceManyBody<SimNode>().strength((d) => CHARGE[d.kind]))
-      .force('collide', forceCollide<SimNode>().radius((d) => d.radius + (d.kind === 'course' ? HUB_PADDING : 3)))
-      .force('x', forceX(0).strength(0.04))
-      .force('y', forceY(0).strength(0.04))
+      .force('collide', forceCollide<SimNode>().radius((d) => d.radius + (d.kind === 'course' ? HUB_PADDING : 2)))
+      .force('x', forceX(0).strength(0.05))
+      .force('y', forceY(0).strength(0.05))
     let raf = 0
     sim.on('tick', () => {
       for (const n of sn) positions.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 })
@@ -158,7 +163,7 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
     const ys = list.map((n) => n.y ?? 0)
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
     const { width, height } = svg.getBoundingClientRect()
-    const k = Math.min(2, Math.max(0.2, Math.min(width / (x1 - x0 + 120), height / (y1 - y0 + 120))))
+    const k = Math.min(2.4, Math.max(0.2, Math.min(width / (x1 - x0 + 140), height / (y1 - y0 + 140))))
     const t = zoomIdentity.translate(width / 2 - (k * (x0 + x1)) / 2, height / 2 - (k * (y0 + y1)) / 2).scale(k)
     select(svg).call(z.transform, t)
   }
@@ -228,9 +233,14 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
   const hoveredNode = hovered ? simNodes.find((n) => n.id === hovered) : undefined
   const showLabel = (n: SimNode) =>
     n.kind === 'course' ||
-    n.kind === 'class' ||
-    (n.kind === 'assignment' && (transform.k >= 1.3 || highlight?.has(n.id) || cluster?.has(n.id))) ||
-    n.id === hovered
+    n.status === 'overdue' ||
+    ((n.kind === 'assignment' || n.kind === 'class') &&
+      (transform.k >= LABEL_ZOOM || highlight?.has(n.id) || cluster?.has(n.id)))
+  const labelText = (n: SimNode) => {
+    const max = n.kind === 'course' ? 40 : 26
+    const t = n.label.length > max ? `${n.label.slice(0, max - 1)}…` : n.label
+    return n.status === 'overdue' ? `${t} · overdue` : t
+  }
 
   const toggleCourse = (id: string) =>
     onFilters({
@@ -247,7 +257,7 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
           const off = filters.hiddenCourses.includes(c.id)
           return (
             <button key={c.id} className={`chip${off ? ' off' : ''}`} aria-pressed={!off} onClick={() => toggleCourse(c.id)}>
-              <span className="dot" style={{ background: c.color }} />
+              <span className="dot" style={{ background: c.color, boxShadow: off ? 'none' : `0 0 6px ${c.color}` }} />
               {c.name}
             </button>
           )
@@ -263,7 +273,7 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
             onChange={(e) => onFilters({ ...filters, showClasses: e.target.checked })} />
           Show classes
         </label>
-        <button className="ghost-btn map-fit" onClick={() => fit()}>Fit</button>
+        <button className="chip map-fit" onClick={() => fit()}>Fit</button>
       </div>
 
       <div className="map-canvas" ref={wrapRef}>
@@ -274,14 +284,30 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
         )}
         <svg ref={svgRef} width={size.w} height={size.h} role="img" aria-label="Study map"
           onPointerMove={onNodeMove} onPointerUp={onNodeUp} onPointerCancel={onNodeUp}>
+          <defs>
+            <pattern id="map-grid" width={GRID} height={GRID} patternUnits="userSpaceOnUse"
+              patternTransform={transform.toString()}>
+              <circle cx={1} cy={1} r={0.9} className="map-grid-dot" />
+            </pattern>
+            <filter id="map-glow" x="-200%" y="-200%" width="500%" height="500%">
+              <feGaussianBlur stdDeviation="3.2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          {/* The grid moves with pan and zoom, like a canvas. */}
+          <rect width={size.w} height={size.h} fill="url(#map-grid)" />
           <g transform={transform.toString()}>
             <g className="map-links">
               {simLinks.map((l) => {
                 const s = l.source as SimNode
                 const t = l.target as SimNode
-                const dim = isDim(s.id) || isDim(t.id)
+                const cls = isDim(s.id) || isDim(t.id) ? 'dim' : highlight ? 'hot' : ''
                 return (
-                  <line key={`${s.id}-${t.id}`} x1={s.x} y1={s.y} x2={t.x} y2={t.y} className={dim ? 'dim' : ''} />
+                  <line key={`${s.id}-${t.id}`} x1={s.x} y1={s.y} x2={t.x} y2={t.y} className={cls}
+                    vectorEffect="non-scaling-stroke" />
                 )
               })}
             </g>
@@ -299,11 +325,18 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
                       if (n.kind === 'course') setFocused((f) => (f === n.id ? null : n.id))
                       else onOpen(n)
                     }}>
-                    {n.kind === 'class' ? (
-                      <rect x={-n.radius} y={-n.radius} width={n.radius * 2} height={n.radius * 2} rx={3} fill={n.color} />
-                    ) : (
-                      <circle r={n.radius} fill={n.color} />
-                    )}
+                    <circle r={Math.max(HIT_RADIUS, n.radius + 3)} className="hit" />
+                    {(() => {
+                      const r = n.id === hovered ? n.radius * 1.6 : n.radius
+                      const glow = n.kind === 'course' || n.id === hovered ? 'url(#map-glow)' : undefined
+                      const hollow = n.status === 'overdue' || n.status === 'short'
+                      return n.kind === 'class' ? (
+                        <rect x={-r} y={-r} width={r * 2} height={r * 2} rx={1.5} fill={n.color} filter={glow} className="shape" />
+                      ) : (
+                        <circle r={r} fill={hollow ? 'var(--map-bg)' : n.color} filter={glow} className="shape"
+                          vectorEffect="non-scaling-stroke" />
+                      )
+                    })()}
                   </g>
                 )
               })}
@@ -311,9 +344,9 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
             {/* Labels sit in their own top layer so dots never cover them. */}
             <g className="map-labels" aria-hidden="true">
               {simNodes.filter(showLabel).map((n) => (
-                <text key={n.id} x={n.x ?? 0} y={(n.y ?? 0) + n.radius + 13} textAnchor="middle"
-                  className={`label label-${n.kind}${isDim(n.id) ? ' dim' : ''}`}>
-                  {n.label.length > 28 ? `${n.label.slice(0, 27)}…` : n.label}
+                <text key={n.id} x={n.x ?? 0} y={(n.y ?? 0) + n.radius + (n.kind === 'course' ? 12 : 9)} textAnchor="middle"
+                  className={`label label-${n.kind}${n.status === 'overdue' ? ' label-overdue' : ''}${isDim(n.id) ? ' dim' : ''}`}>
+                  {labelText(n)}
                 </text>
               ))}
             </g>
@@ -330,12 +363,13 @@ export function StudyMap({ nodes, links, availableCourses, filters, onFilters, o
           </div>
         )}
 
-        <div className="map-legend muted small">
-          <span><i className="lg-dot" /> assignment</span>
-          <span><i className="lg-dot sm" /> study block</span>
-          <span><i className="lg-sq" /> class</span>
-          <span><i className="lg-ring red" /> overdue</span>
-          <span><i className="lg-ring amber" /> needs time</span>
+        <div className="map-legend">
+          <span><i className="lg-dot" />assignment</span>
+          <span><i className="lg-dot sm" />study block</span>
+          {filters.showClasses && <span><i className="lg-sq" />class</span>}
+          <span><i className="lg-ring red" />overdue</span>
+          <span><i className="lg-ring amber" />needs time</span>
+          <span className="lg-hint">scroll to zoom · drag to move</span>
         </div>
       </div>
     </div>

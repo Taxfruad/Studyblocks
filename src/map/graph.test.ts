@@ -68,7 +68,10 @@ describe('buildGraph', () => {
     expect(node(g, 'item:lab').status).toBeUndefined() // 2 h estimate, 2 h of blocks
     expect(node(g, 'block:b1').status).toBe('past')
     expect(node(g, 'item:proj').radius).toBeGreaterThan(node(g, 'item:quiz').radius)
-    expect(node(g, 'course:cs')).toMatchObject({ radius: 22, color: '#8b7cf6', label: 'CS 210' })
+    expect(node(g, 'course:cs')).toMatchObject({ radius: 7, color: '#8b7cf6', label: 'CS 210' })
+    expect(node(g, 'block:b2').radius).toBe(2)
+    expect(node(g, 'item:quiz').radius).toBeCloseTo(4.7, 1) // 1 h
+    expect(node(g, 'item:proj').radius).toBe(6) // 6 h, capped
     expect(node(g, 'item:loose').color).toBe(DEFAULT_EVENT_COLOR)
   })
 
@@ -91,7 +94,7 @@ describe('buildGraph', () => {
   it('adds class commitments with upcoming dates when classes are shown', () => {
     expect(ids(build())).not.toContain('class:lec')
     const g = build({ showClasses: true })
-    expect(node(g, 'class:lec')).toMatchObject({ kind: 'class', label: 'CS 210 lecture', radius: 9 })
+    expect(node(g, 'class:lec')).toMatchObject({ kind: 'class', label: 'CS 210 lecture', radius: 4 })
     expect(g.links).toContainEqual({ source: 'class:lec', target: 'course:cs' })
     expect(ids(g)).not.toContain('class:ended')
     expect(ids(g)).not.toContain('class:work') // only classes, not shifts
