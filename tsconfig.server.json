@@ -2,10 +2,15 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.server.tsbuildinfo",
     "target": "es2023",
-    "lib": ["ES2023", "DOM"],
-    "types": ["node"],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
     "skipLibCheck": true,
-    "module": "nodenext",
+    "module": "esnext",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
@@ -13,7 +18,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx"
   },
-  "include": ["server", "vitest.config.ts"]
+  "include": [
+    "server",
+    "vitest.config.ts",
+    "src/**/*.test.ts",
+    "src/test"
+  ]
 }
