@@ -66,6 +66,11 @@ describe('expandCommitments', () => {
     for (const o of occs) expect(new Date(o.start).getHours()).toBe(16)
   })
 
+  it('supports commitments that end at midnight', () => {
+    const c: Commitment = { id: 'n', title: 'Late shift', type: 'work', date: '2026-11-20', startTime: '20:00', endTime: '24:00' }
+    expect(expandCommitments([c], '2026-11-20', '2026-11-20')[0].end).toBe(new Date(2026, 10, 21, 0, 0).toISOString())
+  })
+
   it('sorts occurrences from several commitments by start', () => {
     const early: Commitment = { id: 'e', title: 'Class', type: 'class', date: '2026-11-17', startTime: '09:00', endTime: '10:00' }
     const out = expandCommitments([shift, early], '2026-11-17', '2026-11-17')
