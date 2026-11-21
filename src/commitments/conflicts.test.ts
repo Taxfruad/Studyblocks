@@ -72,6 +72,18 @@ describe('findConflicts', () => {
     expect(cs).toEqual([])
   })
 
+  it('still checks things from earlier today', () => {
+    // Back-to-back classes this morning, checked late at night the same day.
+    const lateTonight = localInstant('2026-11-20', '23:19')
+    const today = (id: string, start: string, end: string) => occ(id, start, end, '2026-11-20')
+    const cs = findConflicts([today('calc', '10:30', '11:30'), today('history', '11:30', '12:30')], [], {
+      now: lateTonight,
+      minGapMinutes: 10,
+    })
+    expect(cs).toHaveLength(1)
+    expect(cs[0]).toMatchObject({ kind: 'tight', gapMinutes: 0 })
+  })
+
   it('sorts results by time and gives stable ids', () => {
     const cs = findConflicts(
       [occ('late1', '18:00', '20:00'), occ('late2', '19:00', '21:00'), occ('early', '08:00', '12:00')],

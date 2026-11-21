@@ -14,17 +14,19 @@ const MINUTE = 60_000
 /**
  * Red conflicts: commitments that overlap, or a timed deadline strictly inside a commitment.
  * Amber "tight" warnings: commitments less than `minGapMinutes` apart (touching counts).
- * Only upcoming things count, and imported Canvas events never do.
+ * Everything from the start of today counts (so today's schedule is checked even after
+ * parts of it have passed). Earlier days don't. Imported Canvas events never count.
  */
 export function findConflicts(
   occs: Occurrence[],
   items: CalendarItem[],
   opts: { now: Date; minGapMinutes: number },
 ): Conflict[] {
-  const now = opts.now.getTime()
+  const n = opts.now
+  const startOfToday = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime()
   const gap = Math.max(0, opts.minGapMinutes) * MINUTE
   const upcoming = occs
-    .filter((o) => Date.parse(o.end) > now)
+    .filter((o) => Date.parse(o.end) > startOfToday)
     .sort((x, y) => x.start.localeCompare(y.start))
   const out: Conflict[] = []
 
@@ -51,7 +53,7 @@ export function findConflicts(
   }
 
   const deadlines = items.filter(
-    (i) => i.kind === 'assignment' && !i.allDay && !i.done && Date.parse(i.start) > now,
+    (i) => i.kind === 'assignment' && !i.allDay && !i.done && Date.parse(i.start) >= startOfToday,
   )
   for (const item of deadlines) {
     const due = Date.parse(item.start)
