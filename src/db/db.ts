@@ -29,6 +29,8 @@ export type CalendarItem = Omit<ParsedItem, 'courseName'> & {
   userEdited: boolean
   /** The item disappeared from its feed but was kept because the student touched it. */
   removedFromSource: boolean
+  /** How long the student expects it to take (minutes). Set by the student, kept on re-import. */
+  estimateMinutes?: number
 }
 
 /** Small key/value store for per-student settings. */
