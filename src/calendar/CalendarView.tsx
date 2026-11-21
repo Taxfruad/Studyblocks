@@ -5,11 +5,12 @@ import listPlugin from '@fullcalendar/list'
 import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { expandCommitments } from '../commitments/expand'
+import { conflictMarks, findConflicts } from '../commitments/conflicts'
+import { expandCommitments, localInstant } from '../commitments/expand'
 import type { Commitment } from '../commitments/types'
 import type { CalendarItem, Course } from '../db/db'
 import { addDays, localDateKey } from './dates'
-import { commitmentEvents, toCalendarEvents, type EventProps, type Marks } from './toEvents'
+import { commitmentEvents, toCalendarEvents, type EventProps } from './toEvents'
 
 export type CommitmentChange = {
   occurrenceId: string
@@ -24,7 +25,9 @@ type Props = {
   items: CalendarItem[]
   courses: Course[]
   commitments: Commitment[]
-  marks: Marks
+  now: Date
+  /** Back-to-back warning gap in minutes. */
+  minGap: number
   /** Jump here when it changes (`nonce` lets the same date be requested twice). */
   focus?: { date: string; nonce: number }
   onSelectItem: (itemId: string) => void
@@ -51,7 +54,7 @@ function renderEvent(arg: EventContentArg) {
 }
 
 export function CalendarView(props: Props) {
-  const { items, courses, commitments, marks, focus } = props
+  const { items, courses, commitments, now, minGap, focus } = props
   const ref = useRef<FullCalendar>(null)
   const narrow = isNarrow()
   const [range, setRange] = useState(() => {
@@ -61,8 +64,13 @@ export function CalendarView(props: Props) {
 
   const events = useMemo(() => {
     const occs = expandCommitments(commitments, range.from, range.to)
+    // Outlines show on every visible day, past ones included, so the calendar always
+    // matches what the schedule looks like. (The Conflicts list only covers today onward.)
+    const marks = conflictMarks(
+      findConflicts(occs, items, { now, minGapMinutes: minGap, from: localInstant(range.from, '00:00') }),
+    )
     return [...toCalendarEvents(items, courses, marks), ...commitmentEvents(occs, courses, marks)]
-  }, [items, courses, commitments, marks, range])
+  }, [items, courses, commitments, range, now, minGap])
 
   useEffect(() => {
     if (!focus) return

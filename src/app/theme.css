@@ -1178,3 +1178,7 @@ a {
     font-size: 12px;
   }
 }
+
+.commitment-item.is-finished {
+  opacity: 0.55;
+}

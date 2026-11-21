@@ -45,7 +45,11 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
 - **Conflicts.** Red means two commitments overlap, or a timed deadline lands during one.
   Amber means two commitments are less than N minutes apart (default 10, set on the
   Conflicts page, 0 turns it off). Only your own commitments count. Imported Canvas
-  events like optional review sessions never do. Checked from now through 8 weeks ahead.
+  events like optional review sessions never do. The Conflicts list and sidebar counts
+  cover today through 8 weeks ahead. Calendar outlines show on any day you're viewing,
+  past days included.
+- **Commitments in the sidebar** are listed by when they next happen. Finished one-time
+  items and ended series are dimmed at the bottom.
 - **Deadlines vs. time blocks.** Canvas assignments are deadlines, so they sit in the
   "Due" row of the day they're due (in your time zone). Events with real times are blocks
   on the grid.

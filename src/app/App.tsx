@@ -4,7 +4,7 @@ import { AssignmentList } from '../assignments/AssignmentList'
 import { addDays, localDateKey } from '../calendar/dates'
 import { CalendarView, type CommitmentChange } from '../calendar/CalendarView'
 import { CommitmentForm, type FormInitial } from '../commitments/CommitmentForm'
-import { conflictMarks, CONFLICT_WINDOW_DAYS, findConflicts } from '../commitments/conflicts'
+import { CONFLICT_WINDOW_DAYS, findConflicts } from '../commitments/conflicts'
 import { ConflictsView } from '../commitments/ConflictsView'
 import { deleteOccurrence, moveOccurrence, validateTimes, type Scope } from '../commitments/edit'
 import { expandCommitments } from '../commitments/expand'
@@ -63,7 +63,6 @@ export default function App() {
     const occs = expandCommitments(commitments, today, addDays(today, CONFLICT_WINDOW_DAYS))
     return findConflicts(occs, items, { now, minGapMinutes: minGap })
   }, [items, commitments, minGap, now])
-  const marks = useMemo(() => conflictMarks(conflicts), [conflicts])
 
   if (!feeds || !courses || !items || !commitments || minGap === undefined) return <div className="loading" />
 
@@ -117,6 +116,7 @@ export default function App() {
         feeds={feeds}
         courses={courses}
         commitments={commitments}
+        now={now}
         conflictCount={redCount}
         warningCount={amberCount}
         onAddCommitment={() => { setForm({ initial: { date: localDateKey(new Date()) } }); setMenuOpen(false) }}
@@ -152,7 +152,8 @@ export default function App() {
             items={items}
             courses={courses}
             commitments={commitments}
-            marks={marks}
+            now={now}
+            minGap={minGap}
             focus={focus}
             onSelectItem={setSelected}
             onSelectCommitment={(commitmentId, occurrenceId) => setForm({ commitmentId, occurrenceId })}

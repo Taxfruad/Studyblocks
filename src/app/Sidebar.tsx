@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TYPE_COLORS } from '../commitments/colors'
 import { describeCommitment } from '../commitments/format'
+import { sortByNextUp } from '../commitments/order'
 import type { Commitment } from '../commitments/types'
 import type { Course, Feed } from '../db/db'
 import { db } from '../db/db'
@@ -17,6 +18,7 @@ type Props = {
   feeds: Feed[]
   courses: Course[]
   commitments: Commitment[]
+  now: Date
   conflictCount: number
   warningCount: number
   onAddCommitment: () => void
@@ -29,7 +31,8 @@ type Props = {
 }
 
 export function Sidebar(props: Props) {
-  const { view, onView, feeds, courses, commitments, conflictCount, warningCount, theme, onToggleTheme, onImport, open } = props
+  const { view, onView, feeds, courses, commitments, now, conflictCount, warningCount, theme, onToggleTheme, onImport, open } = props
+  const upcoming = sortByNextUp(commitments, now)
   const hasTestShift = commitments.some((c) => c.title === 'Work (test shift)')
   const courseColor = (c: Commitment) => courses.find((x) => x.id === c.courseId)?.color ?? TYPE_COLORS[c.type]
   const [syncing, setSyncing] = useState<string | null>(null)
@@ -81,13 +84,14 @@ export function Sidebar(props: Props) {
         </header>
         {commitments.length === 0 && <p className="muted small">Classes, shifts, practice… Drag on the week view to add one.</p>}
         <ul>
-          {commitments.map((c) => (
+          {upcoming.map(({ commitment: c, next }) => (
             <li key={c.id}>
-              <button className="commitment-item" onClick={() => props.onEditCommitment(c.id)}>
+              <button className={`commitment-item${next ? '' : ' is-finished'}`} onClick={() => props.onEditCommitment(c.id)}
+                title={next ? undefined : 'Finished: no upcoming dates'}>
                 <span className="swatch-static" style={{ background: courseColor(c) }} />
                 <span className="commitment-text">
                   <span className="commitment-name">{c.title}</span>
-                  <span className="muted small">{describeCommitment(c)}</span>
+                  <span className="muted small">{next ? describeCommitment(c) : `Finished · ${describeCommitment(c)}`}</span>
                 </span>
               </button>
             </li>
