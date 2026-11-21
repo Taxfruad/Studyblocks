@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { Commitment } from '../commitments/types'
 import type { ParsedItem } from '../import/types'
 
 /** A calendar source: a Canvas feed URL or an uploaded .ics file. Lives only in this browser. */
@@ -30,10 +31,15 @@ export type CalendarItem = Omit<ParsedItem, 'courseName'> & {
   removedFromSource: boolean
 }
 
+/** Small key/value store for per-student settings. */
+export type Setting = { key: string; value: unknown }
+
 export class StudyBlocksDB extends Dexie {
   declare feeds: EntityTable<Feed, 'id'>
   declare courses: EntityTable<Course, 'id'>
   declare items: EntityTable<CalendarItem, 'id'>
+  declare commitments: EntityTable<Commitment, 'id'>
+  declare settings: EntityTable<Setting, 'key'>
 
   constructor(name = 'studyblocks') {
     super(name)
@@ -41,6 +47,11 @@ export class StudyBlocksDB extends Dexie {
       feeds: 'id',
       courses: 'id, &name',
       items: 'id, feedId, courseId, kind, start',
+    })
+    // Milestone 2: commitments (classes, shifts, …) and settings.
+    this.version(2).stores({
+      commitments: 'id',
+      settings: 'key',
     })
   }
 }
