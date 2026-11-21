@@ -2,11 +2,11 @@
 
 A clean, Obsidian-inspired calendar and planner for students. It pulls your Canvas
 assignments into one calm calendar, alongside your classes, work shifts and other
-commitments, flags when things clash, and plans your study time around all of it.
-A later milestone maps how your coursework connects.
+commitments, flags when things clash, plans your study time around all of it, and
+shows how your coursework connects on an Obsidian-style study map.
 
-**Status:** Milestones 1 (calendar + .ics import), 2 (commitments + conflicts) and
-3 (auto-scheduler) are done. Milestone 4 (study map) is next.
+**Status:** Milestones 1–4 are done: calendar + .ics import, commitments + conflicts,
+auto-scheduler, and study map. Milestone 5 (Canvas API) is next.
 
 ## Run it
 
@@ -58,6 +58,11 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
   Re-planning only replaces the planner's own future blocks. Dragged blocks are pinned,
   past blocks count as studied, and blocks of finished assignments stay, crossed out.
   It never re-plans on its own. Settings live on the Schedule page.
+- **Study map** (milestone 4) is a springy graph (d3-force, drawn as SVG) of courses,
+  upcoming assignments (due today through 8 weeks, plus unfinished overdue work from
+  the last 2 weeks), their study blocks, and optionally class commitments (squares).
+  Dot size follows the time estimate. Red ring = overdue, amber = needs study time.
+  Filters (course chips, hide finished, show classes) are remembered in the browser.
 - **Deadlines vs. time blocks.** Canvas assignments are deadlines, so they sit in the
   "Due" row of the day they're due (in your time zone). Events with real times are blocks
   on the grid.
@@ -68,6 +73,7 @@ src/
   calendar/     FullCalendar view, item/commitment → event mapping, date helpers
   commitments/  commitment rules, expansion, conflicts, move/delete, form, Schedule page
   study/        estimates, planner, coverage, study settings, block dialog
+  map/          study map graph builder, d3-force view, filters
   assignments/  assignment list + grouping
   import/       .ics parsing, Canvas mapping, sample feed, import/sync actions, dialog
   db/           Dexie schema, import merge rules, course colors
@@ -77,8 +83,7 @@ docs/superpowers/plans/   per-milestone implementation plans
 ```
 
 **Stack:** React 19 + TypeScript + Vite · FullCalendar 6 (free MIT plugins) · ical.js ·
-Dexie · Hono · Vitest. Planned: Cytoscape.js for the study map, Tauri as an optional
-desktop build.
+Dexie · d3-force/d3-zoom · Hono · Vitest. Planned: Tauri as an optional desktop build.
 
 ## Roadmap
 
@@ -87,8 +92,8 @@ desktop build.
 | 1 | **MVP:** calendar (week/month/agenda), Canvas link + `.ics` import, re-sync, assignment list with done, course colors, dark/light theme, sample data | ✅ Done |
 | 2 | **Commitments + conflicts:** one-time/weekly classes, shifts and other commitments, drag/resize with "this week / every week", red conflicts (overlaps, deadlines during commitments), amber back-to-back warnings with an adjustable gap, test work shift button | ✅ Done |
 | 3 | **Auto-scheduler:** "Plan my study time" button, start-early spreading, flexible 30 min–2 h chunks, buffer around commitments, study hours + daily limit, editable estimates, pinned (dragged) blocks, crossed-out blocks for finished work, "needs more study time" list | ✅ Done |
-| 4 | **Study map:** Obsidian-style graph of courses ↔ assignments ↔ study blocks | ⏭ Next |
-| 5 | **Canvas API:** optional access token, point values, submission status, auto-sync | |
+| 4 | **Study map:** Obsidian-style graph of courses ↔ upcoming assignments ↔ study blocks (+ optional classes), status rings, hover focus, click-through, filters | ✅ Done |
+| 5 | **Canvas API:** optional access token, point values, submission status, auto-sync | ⏭ Next |
 | 6 | **Polish + launch:** deploy (static site + serverless helper), export to Google/Apple Calendar, installable PWA, optional account sync | |
 
 ## Decisions so far
@@ -96,6 +101,8 @@ desktop build.
 - **For students in general, not just one person.** That's why approach A was chosen:
   local-first, so we hold no student data. Accounts with sync (Supabase) are an add-on in
   milestone 6, not the foundation.
+- **d3-force instead of Cytoscape** for the study map (milestone 4), for the live,
+  springy Obsidian feel and theming through the same CSS variables.
 - **TypeScript over Python**, because the app is mostly an interactive UI that runs in
   the browser.
 - **Hosting is decided at launch** (milestone 6). Until then everything runs locally.
