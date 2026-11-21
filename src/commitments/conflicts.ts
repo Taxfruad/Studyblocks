@@ -20,15 +20,10 @@ const MINUTE = 60_000
 export function findConflicts(
   occs: Occurrence[],
   items: CalendarItem[],
-  opts: {
-    now: Date
-    minGapMinutes: number
-    /** Check from here instead of the start of today (the calendar uses this for past days). */
-    from?: Date
-  },
+  opts: { now: Date; minGapMinutes: number },
 ): Conflict[] {
   const n = opts.now
-  const startOfToday = opts.from?.getTime() ?? new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime()
+  const startOfToday = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime()
   const gap = Math.max(0, opts.minGapMinutes) * MINUTE
   const upcoming = occs
     .filter((o) => Date.parse(o.end) > startOfToday)

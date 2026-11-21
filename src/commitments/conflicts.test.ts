@@ -84,15 +84,6 @@ describe('findConflicts', () => {
     expect(cs[0]).toMatchObject({ kind: 'tight', gapMinutes: 0 })
   })
 
-  it('can check from an earlier date, for past days shown on the calendar', () => {
-    const yesterday = (id: string, start: string, end: string) => occ(id, start, end, '2026-11-19')
-    const pair = [yesterday('calc', '10:30', '11:30'), yesterday('history', '11:30', '12:30')]
-    expect(findConflicts(pair, [], opts)).toEqual([])
-    const cs = findConflicts(pair, [], { ...opts, from: localInstant('2026-11-16', '00:00') })
-    expect(cs).toHaveLength(1)
-    expect(cs[0].kind).toBe('tight')
-  })
-
   it('sorts results by time and gives stable ids', () => {
     const cs = findConflicts(
       [occ('late1', '18:00', '20:00'), occ('late2', '19:00', '21:00'), occ('early', '08:00', '12:00')],
