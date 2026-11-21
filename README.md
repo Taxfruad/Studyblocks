@@ -2,11 +2,11 @@
 
 A clean, Obsidian-inspired calendar and planner for students. It pulls your Canvas
 assignments into one calm calendar, alongside your classes, work shifts and other
-commitments, and flags when things clash. Later milestones schedule study time for you
-and map how your coursework connects.
+commitments, flags when things clash, and plans your study time around all of it.
+A later milestone maps how your coursework connects.
 
-**Status:** Milestones 1 (calendar + .ics import) and 2 (commitments + conflicts) are
-done. Milestone 3 (auto-scheduler) is next.
+**Status:** Milestones 1 (calendar + .ics import), 2 (commitments + conflicts) and
+3 (auto-scheduler) are done. Milestone 4 (study map) is next.
 
 ## Run it
 
@@ -21,7 +21,8 @@ npm run build
 ```
 
 No Canvas account? Click **Try sample data** on the start screen. To see conflicts,
-click **Load test work shift** in the sidebar's Commitments section.
+click **Load test work shift** in the sidebar's Commitments section. Then press
+**Plan my study time**.
 
 To import your real calendar: in Canvas open **Calendar → Calendar Feed**, copy the link,
 and paste it into **Import Canvas calendar**. You can also upload any `.ics` file.
@@ -49,6 +50,14 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
   8 weeks ahead. Earlier days aren't flagged, so old clashes don't clutter things.
 - **Commitments in the sidebar** are listed by when they next happen. Finished one-time
   items and ended series are dimmed at the bottom.
+- **Study planning** (milestone 3). "Plan my study time" handles the earliest deadline
+  first. It starts today and spreads a little each day (one chunk per day, 30 min–2 h),
+  inside study hours, under a daily limit, and around commitments plus a buffer. Only
+  your own commitments count as busy. Estimates come from the title (quiz 1 h, project
+  6 h, …) and can be changed per assignment. All-day deadlines finish the day before.
+  Re-planning only replaces the planner's own future blocks. Dragged blocks are pinned,
+  past blocks count as studied, and blocks of finished assignments stay, crossed out.
+  It never re-plans on its own. Settings live on the Schedule page.
 - **Deadlines vs. time blocks.** Canvas assignments are deadlines, so they sit in the
   "Due" row of the day they're due (in your time zone). Events with real times are blocks
   on the grid.
@@ -57,7 +66,8 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
 src/
   app/          shell, sidebar, theme, item details dialog
   calendar/     FullCalendar view, item/commitment → event mapping, date helpers
-  commitments/  commitment rules, expansion, conflicts, move/delete, form, conflicts page
+  commitments/  commitment rules, expansion, conflicts, move/delete, form, Schedule page
+  study/        estimates, planner, coverage, study settings, block dialog
   assignments/  assignment list + grouping
   import/       .ics parsing, Canvas mapping, sample feed, import/sync actions, dialog
   db/           Dexie schema, import merge rules, course colors
@@ -76,8 +86,8 @@ desktop build.
 |---|---|---|
 | 1 | **MVP:** calendar (week/month/agenda), Canvas link + `.ics` import, re-sync, assignment list with done, course colors, dark/light theme, sample data | ✅ Done |
 | 2 | **Commitments + conflicts:** one-time/weekly classes, shifts and other commitments, drag/resize with "this week / every week", red conflicts (overlaps, deadlines during commitments), amber back-to-back warnings with an adjustable gap, test work shift button | ✅ Done |
-| 3 | **Auto-scheduler:** time estimates per assignment, available hours, study blocks placed before due dates, warnings when a deadline can't fit, pinned blocks | ⏭ Next |
-| 4 | **Study map:** Obsidian-style graph of courses ↔ assignments ↔ study blocks | |
+| 3 | **Auto-scheduler:** "Plan my study time" button, start-early spreading, flexible 30 min–2 h chunks, buffer around commitments, study hours + daily limit, editable estimates, pinned (dragged) blocks, crossed-out blocks for finished work, "needs more study time" list | ✅ Done |
+| 4 | **Study map:** Obsidian-style graph of courses ↔ assignments ↔ study blocks | ⏭ Next |
 | 5 | **Canvas API:** optional access token, point values, submission status, auto-sync | |
 | 6 | **Polish + launch:** deploy (static site + serverless helper), export to Google/Apple Calendar, installable PWA, optional account sync | |
 
@@ -107,5 +117,7 @@ desktop build.
   (max 500 occurrences each).
 - Commitments can't run past midnight (e.g. a 10 pm–2 am shift), and repeat only weekly.
 - "Every week" changes apply to the whole series, past weeks included.
+- The planner doesn't add breaks between back-to-back study blocks for different
+  assignments. A dropped (dragged) block can sit on top of others until the next re-plan.
 - The feed helper checks DNS before fetching but doesn't pin the resolved IP. That's fine
   locally; tighten it before public deployment (milestone 6).
