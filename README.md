@@ -1,10 +1,12 @@
 # StudyBlocks
 
 A clean, Obsidian-inspired calendar and planner for students. It pulls your Canvas
-assignments into one calm calendar. Later milestones fit study time around classes and
-work shifts, flag conflicts, and map how your coursework connects.
+assignments into one calm calendar, alongside your classes, work shifts and other
+commitments, and flags when things clash. Later milestones schedule study time for you
+and map how your coursework connects.
 
-**Status:** Milestone 1 (calendar + .ics import) is done. Milestone 2 is next.
+**Status:** Milestones 1 (calendar + .ics import) and 2 (commitments + conflicts) are
+done. Milestone 3 (auto-scheduler) is next.
 
 ## Run it
 
@@ -18,7 +20,8 @@ npm run typecheck
 npm run build
 ```
 
-No Canvas account? Click **Try sample data** on the start screen.
+No Canvas account? Click **Try sample data** on the start screen. To see conflicts,
+click **Load test work shift** in the sidebar's Commitments section.
 
 To import your real calendar: in Canvas open **Calendar → Calendar Feed**, copy the link,
 and paste it into **Import Canvas calendar**. You can also upload any `.ics` file.
@@ -35,6 +38,14 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
 - **Re-syncing never loses your stuff.** Items are matched by their `.ics` UID. Your
   "done" marks and course colors are never overwritten. If something vanishes from
   Canvas after you marked it done, it's kept and labeled "Removed from Canvas".
+- **Commitments** (milestone 2) are classes, shifts and anything else you have to be at,
+  either one-time or weekly. They're stored as rules with local wall-clock times, so a
+  4 pm shift stays at 4 pm across daylight saving. Dragging a weekly one asks "This week
+  only" (saves an exception for that date) or "Every week" (changes the rule).
+- **Conflicts.** Red means two commitments overlap, or a timed deadline lands during one.
+  Amber means two commitments are less than N minutes apart (default 10, set on the
+  Conflicts page, 0 turns it off). Only your own commitments count. Imported Canvas
+  events like optional review sessions never do. Checked from now through 8 weeks ahead.
 - **Deadlines vs. time blocks.** Canvas assignments are deadlines, so they sit in the
   "Due" row of the day they're due (in your time zone). Events with real times are blocks
   on the grid.
@@ -42,7 +53,8 @@ and paste it into **Import Canvas calendar**. You can also upload any `.ics` fil
 ```
 src/
   app/          shell, sidebar, theme, item details dialog
-  calendar/     FullCalendar view, item → event mapping, date helpers
+  calendar/     FullCalendar view, item/commitment → event mapping, date helpers
+  commitments/  commitment rules, expansion, conflicts, move/delete, form, conflicts page
   assignments/  assignment list + grouping
   import/       .ics parsing, Canvas mapping, sample feed, import/sync actions, dialog
   db/           Dexie schema, import merge rules, course colors
@@ -60,8 +72,8 @@ desktop build.
 | # | Milestone | Status |
 |---|---|---|
 | 1 | **MVP:** calendar (week/month/agenda), Canvas link + `.ics` import, re-sync, assignment list with done, course colors, dark/light theme, sample data | ✅ Done |
-| 2 | **Obligations + conflicts:** add classes, work shifts and other commitments (one-time or weekly), and flag overlaps. Seed a made-up test shift: Tue/Thu 4–9 pm, Sat 10 am–4 pm | ⏭ Next |
-| 3 | **Auto-scheduler:** time estimates per assignment, available hours, study blocks placed before due dates, warnings when a deadline can't fit, pinned blocks | |
+| 2 | **Commitments + conflicts:** one-time/weekly classes, shifts and other commitments, drag/resize with "this week / every week", red conflicts (overlaps, deadlines during commitments), amber back-to-back warnings with an adjustable gap, test work shift button | ✅ Done |
+| 3 | **Auto-scheduler:** time estimates per assignment, available hours, study blocks placed before due dates, warnings when a deadline can't fit, pinned blocks | ⏭ Next |
 | 4 | **Study map:** Obsidian-style graph of courses ↔ assignments ↔ study blocks | |
 | 5 | **Canvas API:** optional access token, point values, submission status, auto-sync | |
 | 6 | **Polish + launch:** deploy (static site + serverless helper), export to Google/Apple Calendar, installable PWA, optional account sync | |
@@ -74,6 +86,8 @@ desktop build.
 - **TypeScript over Python**, because the app is mostly an interactive UI that runs in
   the browser.
 - **Hosting is decided at launch** (milestone 6). Until then everything runs locally.
+- **No walking/travel time between places** (decided in milestone 2). The single
+  adjustable back-to-back gap covers "I need a few minutes to get there".
 
 ## Picking this up later
 
@@ -82,11 +96,13 @@ desktop build.
    `docs/superpowers/plans/`.
 3. `npm test` should be green before and after each change.
 
-## Known limits (milestone 1)
+## Known limits
 
 - Re-syncing is manual (there's a button per calendar). Auto-sync comes with milestone 5.
 - Uploaded `.ics` files can't re-sync. Upload the newer file instead.
 - Recurring events in non-Canvas calendars are expanded from 1 year back to 1 year ahead
   (max 500 occurrences each).
+- Commitments can't run past midnight (e.g. a 10 pm–2 am shift), and repeat only weekly.
+- "Every week" changes apply to the whole series, past weeks included.
 - The feed helper checks DNS before fetching but doesn't pin the resolved IP. That's fine
   locally; tighten it before public deployment (milestone 6).
