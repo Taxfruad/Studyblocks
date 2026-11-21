@@ -1,7 +1,7 @@
 # StudyBlocks — Design
 
 Date: 2026-11-20
-Status: draft, awaiting approval
+Status: approved 2026-11-20
 
 ## Intent
 
